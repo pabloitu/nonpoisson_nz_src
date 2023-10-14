@@ -1,0 +1,10 @@
+name: nonpoisson
+channels:
+    - conda-forge
+dependencies:
+#    - pip
+#    - wheel
+    - python=3.10.12
+    - openquake.engine=3.16.4
+    - pycsep=0.6.2
+#    - rioxarray=0.14.1
