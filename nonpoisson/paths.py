@@ -10,7 +10,7 @@ data = join(main, 'data')
 results = join(main, 'results')
 export = join(main, 'export')
 
-# Data subfolders
+# Raw data subfolders
 basemaps = join(data, 'basemaps')
 catalogs = join(data, 'catalogs')
 gpsmodels = join(data, 'gnss_models')
@@ -21,7 +21,6 @@ hazardmodels = join(data, 'hazard_models')
 # Basemaps
 basemap_bluebrown = join(basemaps, 'bluebrown.tiff')
 nz_coastlines_2193 = join(basemaps, 'new_zealand', 'polygons', 'nz_poly.shp')
-
 
 # Regions
 region_tvz = join(regions, 'tvz/tvz.txt')
@@ -36,7 +35,7 @@ region_it = join(regions, 'italy/italy_region.shp')
 csep_nz_grid = join(regions, 'csep_grid.txt')
 csep_testing = join(regions, 'new_zealand/csep_testing.csv')
 
-# Geodetic Models
+# Geodetic Model
 points = join(gpsmodels, 'points.csv')
 gps_source = join(gpsmodels, 'source')
 gps_processed = join(gpsmodels, 'processed')
@@ -44,12 +43,8 @@ gps_processed = join(gpsmodels, 'processed')
 ## Final models batch
 gps_secondmodels = join(gps_source, 'new_models')
 gps_hw_final = join(gps_secondmodels, 'VDoHS_solution_corr_sill.csv')
-gps_hw_original = join(gps_secondmodels, 'HW_original_i2_maxshear_savagesimpson_20july.dat')
-gps_hw_sillremoved = join(gps_secondmodels, 'HW_sillremoved_i2_maxshear_savagesimpson_20july.dat')
-
 
 ## Processed models
-# model_names = ['hw_original', 'hw_sillremoved', 'hw_final']
 model_names = ['hw_final']
 gps_proc_models = {i: join(gps_processed, '%s.csv' % i) for i in model_names}
 
@@ -61,17 +56,15 @@ cat_ca = join(catalogs, 'cat_ca.csv')
 cat_it = join(catalogs, 'cat_it.csv')
 cats_etas = join(catalogs, 'syn_etas_nz')
 
-cat_nz_dcz = join(catalogs, 'cat_nz_dc.csv')
-cat_japan_dcz = join(catalogs, 'cat_japan_dc.csv')
-cat_ca_dcz = join(catalogs, 'cat_ca_dc.csv')
-cat_it_dcz = join(catalogs, 'cat_it_dc.csv')
+# cat_nz_dcz = join(catalogs, 'cat_nz_dc.csv')
+# cat_japan_dcz = join(catalogs, 'cat_japan_dc.csv')
+# cat_ca_dcz = join(catalogs, 'cat_ca_dc.csv')
+# cat_it_dcz = join(catalogs, 'cat_it_dc.csv')
 
 # Forecasts
 ADDTOT23456GRuEEPAScomb = join(forecasts, 'ADDTOT23456GRuEEPAScomb.csv')
 MULTOT123456GruEEPAScomb = join(forecasts, 'MULTOT123456GruEEPAScomb.csv')
 MULTOT123456r1 = join(forecasts, 'MULTOT123456r1.csv')
-
-
 MULTOT1346GRU = join(forecasts, 'MULTOT1346GRU.csv')
 MULTOT1346GruEEPAScomb = join(forecasts, 'MULTOT1346GruEEPAScomb.csv')
 ADDTOT346ave = join(forecasts, 'ADDTOT346ave.csv')
@@ -81,26 +74,35 @@ AddoptiEEPAScomb = join(forecasts, 'AddoptiEEPAScomb.csv')
 
 
 # Results
-results_path = {'spatial': {'dir': join(results, 'spatial')},
-                'temporal': {'dir': join(results, 'temporal')},
+results_path = {'catalogs': {'dir': join(results, 'catalogs'),
+                             'fig': None,
+                             'csv': None},
+                'temporal': {'dir': join(results, 'temporal',),
+                             'serial': None},
+                'spatial': {'dir': join(results, 'spatial')},
                 'hazard': {'dir': join(results, 'hazard')}}
-subfolders = ['fig', 'raster', 'shp', 'serial', 'vtk']
-extensions = {i: j for i, j in zip(subfolders, ['png', 'tiff', 'shp', 'pkl', 'vti'])}
 
+subfolders = ['fig', 'csv', 'raster', 'shp', 'serial', 'vtk']
+subfolder_formats = ['png', 'csv', 'tiff', 'shp', 'pickle', 'vti']
+extensions = {i: j for i, j in zip(subfolders, subfolder_formats)}
 
 for key, val in results_path.items():
     for subfolder in subfolders:
-        val[subfolder] = join(val['dir'], subfolder)
-        makedirs(val[subfolder], exist_ok=True)
+        if subfolder in [i[0] for i in list(val.items())]:
+            val[subfolder] = join(val['dir'], subfolder)
+            makedirs(val[subfolder], exist_ok=True)
 
 
-def get_path(model, result_type, name, ext=None):
+def get(model, result_type, name, ext=None):
     if ext is None:
         ext = extensions[result_type]
-    return join(results_path[model][result_type], '%s.%s' % (name, ext))
+    if ext:
+        return join(results_path[model][result_type], '%s.%s' % (name, ext))
+    else:
+        return join(results_path[model][result_type], '%s' % name)
 
 
-def get_oqpath(name):
+def get_oq(name):
     oq_dir = join(results, 'hazard', 'oq')
     if isinstance(name, str):
         return join(oq_dir, name)
@@ -118,7 +120,7 @@ def get_oqcalc(num, folder=None):
 
 
 def get_oqjobid(name):
-    results_dir = join(get_oqpath(name), 'results')
+    results_dir = join(get_oq(name), 'results')
     path = glob.glob1(results_dir, 'realizations*')
     ids = [int(id.split('.')[0].split('_')[-1]) for id in path]
     return max(ids)
@@ -155,4 +157,15 @@ Tauranga = np.array([[176.2, -37.7]])
 Gisborne = np.array([[178.0, -38.7]])
 Invercargill = np.array([[168.4, -46.4]])
 
+ms_figroot = join(main, 'figures')
+forecast_ms = join(ms_figroot, 'forecasts_ms')
+hazard_ms = join(ms_figroot, 'hazard_ms')
 
+ms1_figs = {f'fig{i}': join(forecast_ms, f'figure{i}') for i in range(1, 23)}
+ms2_figs = {f'fig{i}': join(hazard_ms, f'figure{i}') for i in range(1, 13)}
+
+
+for fold in ms1_figs.values():
+    makedirs(fold, exist_ok=True)
+for fold in ms2_figs.values():
+    makedirs(fold, exist_ok=True)

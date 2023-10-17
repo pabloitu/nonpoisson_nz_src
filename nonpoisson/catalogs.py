@@ -2,11 +2,9 @@
 import datetime
 from datetime import datetime as dt
 
-import cartopy.crs
 import fiona
 import pandas
 import numpy as np
-import matplotlib.pyplot as plt
 from shapely.geometry import Polygon as Polygon_Shapely
 from nonpoisson import paths
 
@@ -282,34 +280,3 @@ def filter_cat(cat, mws=(3.99, 10.0), depth=(40, -2),
 
     return new_cat
 
-
-if __name__ == '__main__':
-
-    cat_nz = filter_cat(get_cat_nz(), start_time=dt(1964, 1, 1),
-                        mws=[4.0, None], depth=[40, -2],
-                        shapefile=paths.region_nz_collection)
-    # california filtered to csep region from pycsep query
-    cat_ca = filter_cat(get_cat_ca(), start_time=dt(1981, 1, 1),
-                        mws=[4.0, None], depth=[30, -2])
-    cat_jp = filter_cat(get_cat_japan(), start_time=dt(1991, 1, 1),
-                        mws=[4.0, None], depth=[30, -2],
-                        shapefile=paths.region_japan)
-    cat_it = filter_cat(get_cat_it(), start_time=dt(1981, 1, 1),
-                        mws=[4.0, None], depth=[30, -2],
-                        shapefile=paths.region_it)
-    cat_globe = filter_cat(get_cat_global(), start_time=dt(1990, 1, 1),
-                           mws=[5.99, None], depth=[30, -2])
-    print('cat')
-    args = {
-        'projection': cartopy.crs.Mercator(),
-        'basemap': None,
-        'region': True,
-        'legend_loc': 2}
-
-    cat_oq2csep(cat_nz).plot(plot_args={
-        **args, 'projection': cartopy.crs.Mercator(central_longitude=179)})
-    cat_oq2csep(cat_jp).plot(plot_args=args)
-    cat_oq2csep(cat_it).plot(plot_args=args)
-    cat_oq2csep(cat_ca).plot(plot_args=args)
-    cat_oq2csep(cat_globe).plot(plot_args=args)
-    plt.show()
