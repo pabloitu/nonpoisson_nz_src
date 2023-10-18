@@ -109,8 +109,8 @@ def plot_rateseries_catalogs():
                      title=r'New Zealand $M\geq5.0$', **ratecalc_args)
 
     fig.supylabel(r'Mean rate   $\mu\left[\frac{\mathrm{EQ}}'
-                  r'{\mathrm{yr}}\right]$', fontsize=18)
-    fig.supxlabel('Year', fontsize=18)
+                  r'{\mathrm{yr}}\right]$', fontsize=14)
+    fig.supxlabel('Year', fontsize=14)
     fig.tight_layout()
 
     sm = plt.cm.ScalarMappable(cmap='coolwarm')
