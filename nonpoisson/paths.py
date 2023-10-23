@@ -78,7 +78,8 @@ results_path = {'catalogs': {'dir': join(results, 'catalogs'),
                              'fig': None,
                              'csv': None},
                 'temporal': {'dir': join(results, 'temporal',),
-                             'serial': None},
+                             'serial': None,
+                             'csv': None},
                 'spatial': {'dir': join(results, 'spatial')},
                 'hazard': {'dir': join(results, 'hazard')}}
 

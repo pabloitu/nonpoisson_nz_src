@@ -72,8 +72,57 @@ def get_cat_nz(name=None):
     else:
         cat.name = name
     return cat
+#
+# def get_cat_nz_dc(name=None):
+#
+#     raw = np.genfromtxt(paths.cat_nz_dc)
+#     lon = raw[:, 7]
+#     lat = raw[:, 8]
+#     depth = raw[:, 9]
+#     mag = raw[:, 10]
+#
+#     id = np.zeros(len(mag))
+#     year = raw[:, 1]
+#     month = raw[:, 2]
+#     day = raw[:, 3]
+#     hour = raw[:, 4]
+#     min = raw[:, 5]
+#     sec = raw[:, 6]
+#     cat = catalogue.Catalogue()
+#     cat.load_from_array(['eventID', 'year', 'month', 'day', 'hour', 'minute',
+#                          'second', 'longitude', 'latitude', 'depth', 'magnitude'],
+#                         np.vstack((id, year, month, day, hour, min, sec, lon, lat, depth, mag)).T)
+#     cat.update_end_year()
+#     cat.update_start_year()
+#     cat.sort_catalogue_chronologically()
+#     if name is None:
+#         cat.name = 'nz_dc'
+#     else:
+#         cat.name = name
+#     return cat
 
+def get_cat_dc(loc='nz'):
+    raw = pandas.read_csv(getattr(paths, f'cat_{loc}_dcz'))
+    lon = raw['lon'].to_numpy()
+    lat = raw['lat'].to_numpy()
+    depth = raw['depth'].to_numpy()
+    mag = raw['mag'].to_numpy().astype(float)
 
+    id = np.arange(raw.shape[0])
+    year = raw['year'].to_numpy()
+    month = raw['month'].to_numpy()
+    day = raw['day'].to_numpy()
+    hour = raw['hour'].to_numpy()
+    min = raw['min'].to_numpy()
+    sec = raw['sec'].to_numpy()
+    cat = catalogue.Catalogue()
+    cat.load_from_array(['eventID', 'year', 'month', 'day', 'hour', 'minute', 'second', 'longitude', 'latitude', 'depth', 'magnitude'],
+                        np.vstack((id, year, month, day, hour, min, sec, lon, lat, depth, mag)).T)
+    cat.update_end_year()
+    cat.update_start_year()
+    cat.sort_catalogue_chronologically()
+    cat.name = loc+'_dc'
+    return cat
 def get_cat_ca(query=False):
     # Magnitude bins properties
 

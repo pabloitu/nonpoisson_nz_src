@@ -7,6 +7,7 @@ from datetime import datetime as dt
 from nonpoisson import catalogs, paths
 from matplotlib.lines import Line2D
 
+
 seaborn.set_style("darkgrid",
                   {"axes.facecolor": ".9", 'font.family': 'Ubuntu'})
 
@@ -37,6 +38,7 @@ def get_rate_time(cat, hmin=0.2, hmax=1, ndisc=30, toplines=np.array([2, 4])):
 
         rates = np.array([i/(j[1] - j[0]) for i, j in zip(n_events, windows)])
         rates[np.isnan(rates)] = 0
+        n_events[np.isnan(n_events)] = 0
 
         Tw.append(windows)
         Count.append(n_events)

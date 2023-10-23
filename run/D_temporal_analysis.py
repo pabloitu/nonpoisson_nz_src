@@ -229,10 +229,6 @@ def ns_test(cat):
         DT.append(new_intervals)
         Count.append(windows)
 
-
-    # plt.figure(figsize=(6, 4))
-    H=[]
-    th = []
     adf_array = []
     kpss_array = []
     dt_out =[]
@@ -246,7 +242,6 @@ def ns_test(cat):
         kpss_array.append(kpss(rates, regression='ct'))
         dt_out.append(DT[i][2:-1])
         rates_out.append(rates)
-
 
     plt.plot(intervals_disc, [i[1] for i in adf_array], 'o', color='steelblue')
     plt.plot(intervals_disc, [i[1] for i in kpss_array], 'o', color='red')
