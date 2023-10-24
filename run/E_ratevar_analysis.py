@@ -58,7 +58,7 @@ def rate_var_regions():
 
 def rate_var_etas():
 
-    n_iter_etas = 800
+    n_iter_etas = 500
     cats = catalogs.get_cat_etas(fn_store_simulation)
 
     for cat in cats:
