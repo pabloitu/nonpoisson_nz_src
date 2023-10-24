@@ -17,7 +17,7 @@ figure_folder = join(time_folder, 'figures')
 fn_store_simulation = join(etas_folder, 'simulated_catalog.csv')
 
 N_MAX = 600
-N_ITER = 2000
+N_ITER = 1000
 RATE_VAR_PARAMS = {'n_disc': np.arange(1, N_MAX),
                    'max_iters': N_ITER}
 
@@ -58,13 +58,14 @@ def rate_var_regions():
 
 def rate_var_etas():
 
+    n_iter_etas = 800
     cats = catalogs.get_cat_etas(fn_store_simulation)
 
     for cat in cats:
         catalogs.filter_cat(cat, mws=(3.99, 10))
         analysis = CatalogAnalysis(cat, name=cat.name,
                                    params={'n_disc': np.arange(1, N_MAX),
-                                           'max_iters': N_ITER})
+                                           'max_iters': n_iter_etas})
         analysis.get_ratevar()
         analysis.cat_var.get_stats()
         analysis.cat_var.purge()
