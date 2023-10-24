@@ -145,7 +145,7 @@ def fig_regions_stats(figure_folder, savefig=True):
 
 def fig_etas_stats(figure_folder, nsims=10, savefig=True):
 
-    n_max = 300
+    n_max = 400
 
     nz = CatalogAnalysis.load(paths.get('temporal', 'serial', 'new_zealand'))
     etas = [CatalogAnalysis.load(paths.get('temporal', 'serial', f'etas_{i}'))
@@ -153,11 +153,11 @@ def fig_etas_stats(figure_folder, nsims=10, savefig=True):
 
     print('stats calculated')
     etas_means = [np.mean([i.cat_var.stats['mean'][j] for i in etas])
-                   for j in range(N_MAX)]
+                   for j in range(n_max)]
     etas_5 = [np.quantile([i.cat_var.stats['mean'][j] for i in etas], 0.025)
-              for j in range(N_MAX)]
+              for j in range(n_max)]
     etas_95 = [np.quantile([i.cat_var.stats['mean'][j] for i in etas], 0.975)
-              for j in range(N_MAX)]
+              for j in range(n_max)]
 
     print('overall stats calculated')
 
@@ -187,10 +187,10 @@ def fig_etas_stats(figure_folder, nsims=10, savefig=True):
 if __name__ == '__main__':
 
     fig_folder = paths.ms1_figs['fig11']
-    rate_var_regions()
-    rate_var_etas()
+    # rate_var_regions()
+    # rate_var_etas()
     # fig_regions_stats(fig_folder, savefig=True)
-    # fig_etas_stats(fig_folder, nsims=10, savefig=True)
+    a = fig_etas_stats(fig_folder, nsims=100, savefig=True)
 
 
 
