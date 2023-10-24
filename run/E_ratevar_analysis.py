@@ -16,8 +16,8 @@ etas_folder = join(time_folder, 'etas')
 figure_folder = join(time_folder, 'figures')
 fn_store_simulation = join(etas_folder, 'simulated_catalog.csv')
 
-N_MAX = 300
-N_ITER = 400
+N_MAX = 600
+N_ITER = 2000
 RATE_VAR_PARAMS = {'n_disc': np.arange(1, N_MAX),
                    'max_iters': N_ITER}
 
@@ -188,8 +188,8 @@ if __name__ == '__main__':
     fig_folder = paths.ms1_figs['fig11']
     rate_var_regions()
     rate_var_etas()
-    fig_regions_stats(fig_folder, savefig=True)
-    fig_etas_stats(fig_folder, nsims=10, savefig=True)
+    # fig_regions_stats(fig_folder, savefig=True)
+    # fig_etas_stats(fig_folder, nsims=10, savefig=True)
 
 
 
