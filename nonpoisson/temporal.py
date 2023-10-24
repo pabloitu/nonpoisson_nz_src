@@ -158,14 +158,21 @@ class CatalogVariability(object):
                       'skewness': skewness,
                       'cod': cod}
 
-    def plot_stats(self, stat='mean', label='', color='steelblue', linestyle='-', linewidth=0.5):
+    def plot_stats(self, stat='mean', ax=None, label='', color='steelblue',
+                   linestyle='-', linewidth=0.5):
 
         n = getattr(self, 'n')
         if stat == 'std':
             value = np.sqrt(self.stats.get('var'))
         else:
             value = self.stats.get(stat)
-        plt.plot(n, value, label=label, color=color, linestyle=linestyle, linewidth=linewidth)
+
+        if ax is None:
+            plt.plot(n, value, label=label, color=color, linestyle=linestyle,
+                     linewidth=linewidth)
+        else:
+            ax.plot(n, value, label=label, color=color, linestyle=linestyle,
+                    linewidth=linewidth)
 
     def purge(self):
 
