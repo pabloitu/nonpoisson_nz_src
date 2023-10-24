@@ -1,39 +1,37 @@
 import os
-import logging
-
-import etas.inversion
-import numpy as np
-import datetime as dt
-
-import pandas as pd
-
-from nonpoisson import paths, catalogs
-from nonpoisson.temporal import CatalogAnalysis
 from os.path import join
+
+import datetime
+import logging
 import fiona
 import json
-import matplotlib.pyplot as plt
+import numpy as np
+import datetime as dt
+import pandas as pd
+import geopandas as gpd
+from shapely.geometry import Polygon
 
-from etas.simulation import ETASSimulation
-from etas.inversion import ETASParameterCalculation
 from etas import set_up_logger
+from etas.inversion import round_half_up, ETASParameterCalculation
+from etas.inversion import read_shape_coords
+from etas.simulation import generate_catalog
 
-set_up_logger(level=logging.DEBUG)
+from nonpoisson import paths, catalogs
 
+set_up_logger(level=logging.INFO)
 
-
-time_folder = paths.results_path['temporal']['dir']
-etas_folder = join(time_folder, 'etas')
+# ETAS Paths
+temporal_folder = paths.results_path['temporal']['dir']
+etas_folder = join(temporal_folder, 'etas/')
 os.makedirs(etas_folder, exist_ok=True)
-
 region_path = join(etas_folder, 'nz_region.npy')
 new_cat_fn = join(etas_folder, 'nz_cat_etas_format.csv')
-params_fn = join(etas_folder, 'params_etas_inv.json')
+params_fn = join(etas_folder, 'parameters_nz.json')
 sim_id = 'nz'
-fn_store_simulation = join(etas_folder, 'catalogs/simulated_catalog.csv')
+fn_store = join(etas_folder, 'simulated_catalog.csv')
+
 
 def invert_params():
-
     a = catalogs.get_cat_nz()
     cat_nz = catalogs.filter_cat(a, start_time=dt.datetime(1985, 1, 1),
                                  depth=(40, -2), mws=(3.5, 10.0),
@@ -46,19 +44,19 @@ def invert_params():
             file_.write(f'{n},{i[10]},{i[9]},{time_str},{i[-3]}\n')
 
     region = fiona.open(paths.region_nz_test)
-    nz_region = np.array(region[0]['geometry']['coordinates'][0])[:, [1,0]]
+    nz_region = np.array(region[0]['geometry']['coordinates'][0])[:, [1, 0]]
     np.save(region_path, nz_region)
 
     theta_0 = {
-        'log10_mu': -5.8,
-        'log10_k0': -2.6,
-        'a': 1.8,
-        'log10_c': -2.5,
-        'omega': -0.02,
-        'log10_tau': 3.5,
-        'log10_d': -0.85,
-        'gamma': 1.3,
-        'rho': 0.66
+        "log10_mu": -7,
+        "log10_k0": -1.5,
+        "a": 2,
+        "log10_c": -2.,
+        "omega": 0.,
+        "log10_tau": 3.5,
+        "log10_d": 0.5,
+        "gamma": 1.,
+        "rho": 0.8
     }
 
     inversion_meta = {
@@ -66,10 +64,11 @@ def invert_params():
         "fn_catalog": new_cat_fn,
         "data_path": "",
         "auxiliary_start": dt.datetime(1985, 1, 1),
-        "timewindow_start": dt.datetime(2012, 1, 1),
-        "timewindow_end": dt.datetime(2022, 1, 1),
+        "timewindow_start": dt.datetime(1991, 1, 1),
+        "timewindow_end": dt.datetime(2020, 1, 1),
         "theta_0": theta_0,
         "mc": 3.6,
+        'm_ref': 3.6,
         "delta_m": 0.1,
         "coppersmith_multiplier": 100,
         "shape_coords": region_path,
@@ -82,40 +81,64 @@ def invert_params():
 
 
 def simulate():
+    np.random.seed(21)
+    burn_date = datetime.datetime(1920, 1, 1)
+    start_date = datetime.datetime(1980, 1, 1)
+    end_date = datetime.datetime(2020, 1, 1)
+    min_magnitude = 4
+    n_sims = 1000
 
-    burn_date = "2000-01-01 00:00:00"
-    start_date = "2020-01-01 00:00:00"
-    years = 60
-    n_sims = 2
-
-    fn_parameters = join(etas_folder, f'parameters_{sim_id}.json')
+    fn_parameters = params_fn
     with open(fn_parameters, 'r') as file_:
-        params = json.load(file_)
-    params['auxiliary_start'] = burn_date
-    params['timewindow_end'] = start_date
-    with open(fn_parameters, 'w') as file_:
-        json.dump(params, file_)
+        simulation_config = json.load(file_)
 
-    with open(fn_parameters, 'r') as f:
-        inversion_output = json.load(f)
-    etas_inversion_reload = ETASParameterCalculation.load_calculation(
-        inversion_output)
+    polygon = Polygon(read_shape_coords(simulation_config["shape_coords"]))
+    bg_catalog = pd.read_csv(simulation_config["fn_ip"], index_col=0,
+                             parse_dates=['time'],
+                             dtype={'url': str, 'alert': str})
+    bg_catalog = bg_catalog.query(
+        f"magnitude>={min_magnitude}")
+    bg_catalog = gpd.GeoDataFrame(bg_catalog,
+                                  geometry=gpd.points_from_xy(
+                                      bg_catalog.latitude,
+                                      bg_catalog.longitude))
+    bg_catalog = bg_catalog[bg_catalog.intersects(polygon)]
 
-    # Initialize simulation
-    simulation = ETASSimulation(etas_inversion_reload)
-    simulation.prepare()
-    simulation.catalog = None
-    # Simulate and store one catalog
-    simulation.simulate_to_csv(fn_store_simulation,
-                               n_simulations=n_sims,
-                               forecast_n_days=365*years)
-
+    for i in range(n_sims):
+        synthetic = generate_catalog(
+            polygon=polygon,
+            timewindow_start=burn_date,
+            timewindow_end=end_date,
+            parameters=simulation_config["final_parameters"],
+            mc=simulation_config["mc"],
+            beta_main=simulation_config["beta"],
+            delta_m=simulation_config["delta_m"],
+            background_lats=bg_catalog['latitude'],
+            background_lons=bg_catalog['longitude'],
+            background_probs=bg_catalog['P_background'] * (
+                    bg_catalog['zeta_plus_1'] /
+                    bg_catalog['zeta_plus_1'].max()),
+            gaussian_scale=0.1
+        )
+        synthetic.magnitude = round_half_up(synthetic.magnitude, 1)
+        synthetic.index.name = 'id'
+        synthetic['catalog_id'] = i
+        print("store catalog..")
+        if i == 0:
+            synthetic[["latitude", "longitude", "time", "magnitude",
+                       "catalog_id"]].query(
+                "time>=@start_date & magnitude>=@min_magnitude").to_csv(
+                fn_store, header=True)
+        else:
+            synthetic[["latitude", "longitude", "time", "magnitude",
+                       "catalog_id"]].query(
+                "time>=@start_date & magnitude>=@min_magnitude").to_csv(
+                fn_store, mode='a', header=False)
+        print("\nDONE!")
 
 
 if __name__ == '__main__':
-
     # invert_params()
     a = simulate()
     # get_rates()
     # a = get_ns_analysis()
-

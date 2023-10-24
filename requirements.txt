@@ -1,9 +1,9 @@
-pip==23.2.1
 openquake.engine==3.16.4
 pycsep==0.6.2
 rioxarray==0.14.1
-cartopy==0.21.1
+cartopy==0.22.0
 pycsep==0.6.2
+shapely==2.0.2
 openquake.engine==3.16.4
 rioxarray==0.14.1
 fiona==1.8.21
