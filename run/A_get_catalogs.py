@@ -18,7 +18,7 @@ default_plot_args = {
 if __name__ == '__main__':
 
     # Get filtered catalogs
-    cat_nz = cat_oq2csep(filter_cat(get_cat_nz(), start_time=dt(1964, 1, 1),
+    cat_nz = cat_oq2csep(filter_cat(get_cat_nz(), start_time=dt(1980, 1, 1),
                          mws=[3.99, None], depth=[40, -2],
                          shapefile=paths.region_nz_collection))
     # california already filtered to the csep region from pycsep query
