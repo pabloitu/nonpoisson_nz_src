@@ -71,6 +71,34 @@ def get_cat_nz(name='nz'):
     return cat
 
 
+def get_cat_nz_dc(name=None):
+
+    raw = np.genfromtxt(paths.cat_nz_dc, skip_header=1, delimiter=',')
+    lon = raw[:, 6]
+    lat = raw[:, 7]
+    depth = raw[:, 8]
+    mag = raw[:, 9]
+
+    id = np.zeros(len(mag))
+    year = raw[:, 0]
+    month = raw[:, 1]
+    day = raw[:, 2]
+    hour = raw[:, 3]
+    min = raw[:, 4]
+    sec = raw[:, 5]
+    cat = catalogue.Catalogue()
+    cat.load_from_array(['eventID', 'year', 'month', 'day', 'hour', 'minute',
+                         'second', 'longitude', 'latitude', 'depth', 'magnitude'],
+                        np.vstack((id, year, month, day, hour, min, sec, lon, lat, depth, mag)).T)
+    cat.update_end_year()
+    cat.update_start_year()
+    cat.sort_catalogue_chronologically()
+    if name is None:
+        cat.name = 'nz_dc'
+    else:
+        cat.name = name
+    return cat
+
 def get_cat_ca(query=False, name='california'):
     # Magnitude bins properties
 
@@ -244,7 +272,7 @@ def get_cat_etas(path=None, name=None):
 
 
 def filter_cat(cat, mws=(3.99, 10.0), depth=(40, -2),
-               start_time=dt(1940, 1, 1),
+               start_time=dt(1964, 1, 1),
                end_time=None, shapefile=None, circle=False):
 
     filter = selector.CatalogueSelector(cat)

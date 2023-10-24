@@ -51,6 +51,7 @@ gps_proc_models = {i: join(gps_processed, '%s.csv' % i) for i in model_names}
 # Catalogs
 cat_global = join(catalogs, 'cat_global.csv')
 cat_nz = join(catalogs, 'cat_nz.csv')
+cat_nz_dc = join(catalogs, 'cat_nz_dc.csv')
 cat_japan = join(catalogs, 'cat_japan.csv')
 cat_ca = join(catalogs, 'cat_ca.csv')
 cat_it = join(catalogs, 'cat_it.csv')
@@ -79,7 +80,8 @@ results_path = {'catalogs': {'dir': join(results, 'catalogs'),
                              'csv': None},
                 'temporal': {'dir': join(results, 'temporal',),
                              'serial': None,
-                             'csv': None},
+                             'csv': None,
+                             'fig': None},
                 'spatial': {'dir': join(results, 'spatial')},
                 'hazard': {'dir': join(results, 'hazard')}}
 
