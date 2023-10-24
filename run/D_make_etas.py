@@ -40,7 +40,8 @@ def invert_params():
     with open(new_cat_fn, 'w') as file_:
         file_.write('id,latitude,longitude,time,magnitude\n')
         for n, i in enumerate(cat_nz):
-            time_str = f'{i[2]}-{i[3]:02}-{i[4]:02} {i[5]:02}:{i[6]:02}:{i[7]:02}'
+            time_str = f'{i[2]}-{i[3]:02}-{i[4]:02}' \
+                       f' {i[5]:02}:{i[6]:02}:{i[7]:02}'
             file_.write(f'{n},{i[10]},{i[9]},{time_str},{i[-3]}\n')
 
     region = fiona.open(paths.region_nz_test)
@@ -138,7 +139,6 @@ def simulate():
 
 
 if __name__ == '__main__':
-    # invert_params()
-    a = simulate()
-    # get_rates()
-    # a = get_ns_analysis()
+
+    invert_params()
+    simulate()
