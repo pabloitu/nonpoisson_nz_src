@@ -22,8 +22,8 @@ if __name__ == '__main__':
                          mws=[3.99, None], depth=[40, -2],
                          shapefile=paths.region_nz_collection))
     # california already filtered to the csep region from pycsep query
-    cat_ca = cat_oq2csep(filter_cat(get_cat_ca(), start_time=dt(1981, 1, 1),
-                        mws=[3.99, None], depth=[30, -2]))
+    cat_ca = cat_oq2csep(filter_cat(get_cat_ca(), start_time=dt(1962, 1, 1),
+                         mws=[3.99, None], depth=[30, -2]))
     cat_jp = cat_oq2csep(filter_cat(get_cat_japan(),
                          start_time=dt(1985, 1, 1), end_time=dt(2011, 1, 1),
                          mws=[3.99, None], depth=[30, -2],

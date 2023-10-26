@@ -35,13 +35,12 @@ def rate_var_regions():
                                     mws=(3.99, 10),
                                     depth=(30, -2))
     cat_ca = catalogs.filter_cat(catalogs.get_cat_ca(query=False),
-                                 start_time=dt(1981, 1, 1),
+                                 start_time=dt(1962, 1, 1),
                                  mws=(3.99, 10),
                                  depth=(30, -2),
                                  )
     cat_it = catalogs.filter_cat(catalogs.get_cat_it(),
                                  start_time=dt(1960, 1, 1),
-                                 shapefile=paths.region_it,
                                  mws=(3.99, 10),
                                  depth=(30, -2))
     cat_globe = catalogs.filter_cat(catalogs.get_cat_global(),
@@ -49,7 +48,7 @@ def rate_var_regions():
                                     mws=(5.99, 10),
                                     depth=(70, -2))
 
-    for cat in [cat_nz, cat_japan, cat_it, cat_ca, cat_globe][1:2]:
+    for cat in [cat_nz, cat_japan, cat_it, cat_ca, cat_globe][2:3]:
         analysis = CatalogAnalysis(cat, name=cat.name, params=RATE_VAR_PARAMS)
         analysis.get_ratevar()
         analysis.cat_var.get_stats()
@@ -94,7 +93,7 @@ def fig_ratevar(figpath, nsims=1000, savefig=True):
     axs[0].fill_between(np.arange(n_max), etas_025, etas_0975, alpha=0.2,
                         label=r'ETAS - Sim. $95\%$ envelope ')
     for i, j, k in zip(analyses, names, colors):
-        i.cat_var.plot_stats('mean', ax=axs[0], label=j, color=k)
+        i.cat_var.plot_stats('mean', ax=axs[0], label=j, color=k, linewidth=1)
     axs[0].plot(np.arange(0, 1.2*n_max), np.arange(0, 1.2*n_max),
                 color='black', linestyle='--', linewidth=1, label='Poisson')
     axs[0].set_xlim([0, n_max])
@@ -112,7 +111,8 @@ def fig_ratevar(figpath, nsims=1000, savefig=True):
     axs[1].fill_between(np.arange(n_max), etas_025, etas_0975, alpha=0.2,
                         label=r'ETAS - Sim. $95\%$ envelope ')
     for i, j, k in zip(analyses, names, colors):
-        i.cat_var.plot_stats('median', ax=axs[1], label=j, color=k)
+        i.cat_var.plot_stats('median', ax=axs[1],
+                             label=j, color=k, linewidth=1)
     axs[1].plot(np.arange(0, 1.2*n_max), np.arange(0, 1.2*n_max),
                 color='black', linestyle='--', linewidth=1, label='Poisson')
     axs[1].set_xlim([0, n_max])
@@ -124,7 +124,7 @@ def fig_ratevar(figpath, nsims=1000, savefig=True):
 
     # Standard Dev. plot
     for i, j, k in zip(analyses, names, colors):
-        i.cat_var.plot_stats('std', ax=axs[2], label=j, color=k)
+        i.cat_var.plot_stats('std', ax=axs[2], label=j, color=k, linewidth=1)
     axs[2].plot(np.arange(0, 1.2*n_max), np.sqrt(np.arange(0, 1.2*n_max)),
                 color='black', linestyle='--', linewidth=1, label='Poisson')
     etas_025 = [np.quantile([i.cat_var.stats['var'][j]**0.5 for i in etas],
