@@ -40,7 +40,7 @@ def cat_oq2csep(cat_oq, region=None):
                        )
         out.append(event_tuple)
 
-    cat = csep.catalogs.CSEPCatalog(data=out, region=region)
+    cat = csep.catalogs.CSEPCatalog(data=out, region=region, name=cat_oq.name)
 
     return cat
 
@@ -117,7 +117,7 @@ def get_cat_ca(query=False, name='california'):
         day = [i.day for i in datetime]
         hour = [i.hour for i in datetime]
         min = [i.minute for i in datetime]
-        sec = [i.second for i in datetime]
+        sec = [i.second + i.microsecond*1e-6 for i in datetime]
         cat = catalogue.Catalogue()
         cat.load_from_array(['eventID', 'year', 'month', 'day', 'hour', 'minute',
                              'second', 'longitude', 'latitude', 'depth', 'magnitude'],

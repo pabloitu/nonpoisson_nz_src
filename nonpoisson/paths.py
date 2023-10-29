@@ -2,7 +2,12 @@ from os import makedirs
 from os.path import join, dirname, realpath
 import glob
 import numpy as np
+import warnings
+import matplotlib
 
+warnings.filterwarnings("ignore",
+                        category=matplotlib.MatplotlibDeprecationWarning)
+np.seterr(all="ignore")
 # Main folders
 codes = dirname(realpath(__file__))
 main = dirname(codes)
@@ -96,13 +101,19 @@ for key, val in results_path.items():
             makedirs(val[subfolder], exist_ok=True)
 
 
-def get(model, result_type, name, ext=None):
-    if ext is None:
-        ext = extensions[result_type]
-    if ext:
-        return join(results_path[model][result_type], '%s.%s' % (name, ext))
+def get(model, result_type, name=None, ext=None):
+
+    if name is None:
+        return results_path[model][result_type]
+
     else:
-        return join(results_path[model][result_type], '%s' % name)
+        if ext is None:
+            ext = extensions[result_type]
+        if ext:
+            return join(results_path[model][result_type],
+                        '%s.%s' % (name, ext))
+        else:
+            return join(results_path[model][result_type], '%s' % name)
 
 
 def get_oq(name):
@@ -159,6 +170,7 @@ Napier = np.array([[176.9, -39.5]])
 Tauranga = np.array([[176.2, -37.7]])
 Gisborne = np.array([[178.0, -38.7]])
 Invercargill = np.array([[168.4, -46.4]])
+NewPlymouth = np.array([[174.5, -39.5]])
 
 ms_figroot = join(main, 'figures')
 forecast_ms = join(ms_figroot, 'forecasts_ms')
