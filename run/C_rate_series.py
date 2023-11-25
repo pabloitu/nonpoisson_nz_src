@@ -127,8 +127,8 @@ def plot_rateseries_catalogs():
     cbar = fig.colorbar(sm, ax=ax, shrink=0.5)
     cbar.ax.tick_params(labelsize=12)
 
-    path_fig = os.path.join(paths.ms1_figs['fig7'], 'catalog_rates.png')
-    plt.savefig(path_fig, dpi=300, bbox_inches='tight')
+    path_fig = os.path.join(paths.ms1_figs['fig5'], 'catalog_rates.png')
+    plt.savefig(path_fig, dpi=900, bbox_inches='tight')
     plt.show()
 
 
