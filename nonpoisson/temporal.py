@@ -95,7 +95,7 @@ class CatalogVariability(object):
         plt.ylim(ylims)
         plt.tight_layout()
 
-    def plot_logratio(self, color='steelblue', start=0, end=np.inf, plot_points=True, alpha=0.05,
+    def plot_logratio(self, ax=None, color='steelblue', start=0, end=np.inf, plot_points=True, alpha=0.05,
                       markersize=0.1, linewidth=0.8, ylims=(-2., 2.), kernel_size=3, title=None):
 
         ind = np.argwhere(np.logical_and(np.array(self.n) > start, np.array(self.n) < end)).ravel()
@@ -103,24 +103,33 @@ class CatalogVariability(object):
 
         Ratio = [self.ratio[i] for i in ind]
 
+        if ax is None:
+            fig, ax = plt.subplots(1, 1)
+
+
         if plot_points:
             for i, j in enumerate(N):
-                plt.plot([j] * len(Ratio[i]), Ratio[i], '.',
+                ax.plot([j] * len(Ratio[i]), Ratio[i], '.',
                          color=color, markersize=markersize)
+
 
         bound_max = medfilt([np.quantile(ratio_n, 1 - alpha/2.) for ratio_n in Ratio], kernel_size=kernel_size)
         bound_min = medfilt([np.quantile(ratio_n, alpha/2.) for ratio_n in Ratio], kernel_size=kernel_size)
-        plt.plot(N, bound_min, c=color, linewidth=linewidth, linestyle='-')
-        plt.plot(N, bound_max, c=color, linewidth=linewidth, linestyle='-')
 
-        plt.xlabel(r'$N_1$ ', fontsize=14)
-        plt.ylabel(r'$\mathrm{log}_{10}\, \dfrac{N_2}{N_1}$', fontsize=14)
-        plt.title(title)
-        plt.ylim(ylims)
-        plt.xlim([min(N), max(N)])
-        plt.tight_layout()
 
-    def plot_histogram(self, n, bins=50, range_=None, label='Results', ratio=False, color=None):
+        ax.plot(N, bound_min, c=color, linewidth=linewidth, linestyle='-')
+        ax.plot(N, bound_max, c=color, linewidth=linewidth, linestyle='-')
+
+        ax.set_xlabel(r'$N_1$ ', fontsize=14)
+        ax.set_ylabel(r'$\mathrm{log}_{10}\, \dfrac{N_2}{N_1}$', fontsize=14)
+        ax.set_title(title)
+        ax.set_ylim(ylims)
+        ax.set_xlim([min(N), max(N)])
+
+    def plot_histogram(self, n, ax=None, bins=50, range_=None, label='Results', ratio=False, color=None):
+
+        if ax is None:
+            fig, ax = plt.subplots(1, 1)
 
         if ratio:
             Y = self.ratio[n]
@@ -129,9 +138,10 @@ class CatalogVariability(object):
 
         if not range_:
             range_ = (np.min(Y), np.max(Y))
-        plt.hist(Y, bins=bins, range=range_, alpha=0.3, label=label, density=True, color=color)
-        plt.ylabel('$\mathrm{PMF}$')
-        plt.xlabel(r'$N_2$')
+        ax.hist(Y, bins=bins, range=range_, alpha=0.3, label=label, density=True, color=color)
+        ax.set_ylabel('$\mathrm{PMF}$')
+        ax.set_xlabel(r'$N_2$')
+
         return range_
 
     def get_stats(self):

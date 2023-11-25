@@ -24,7 +24,9 @@ regions = join(data, 'regions')
 hazardmodels = join(data, 'hazard_models')
 
 # Basemaps
-basemap_bluebrown = join(basemaps, 'bluebrown.tiff')
+basemap_bluebrown = join(basemaps, 'new_zealand', 'bluebrown.tiff')
+basemap_bluebrown_2193 = join(basemaps, 'new_zealand', 'basemap_2193.tiff')
+basemap_bluebrown_4326 = join(basemaps, 'new_zealand', 'basemap_4326.tiff')
 nz_coastlines_2193 = join(basemaps, 'new_zealand', 'polygons', 'nz_poly.shp')
 
 # Regions
@@ -170,7 +172,8 @@ Napier = np.array([[176.9, -39.5]])
 Tauranga = np.array([[176.2, -37.7]])
 Gisborne = np.array([[178.0, -38.7]])
 Invercargill = np.array([[168.4, -46.4]])
-NewPlymouth = np.array([[174.5, -39.5]])
+NewPlymouth = np.array([[174.2, -39.2]])
+Kaikoura = np.array([[173.68, -42.4]])
 
 ms_figroot = join(main, 'figures')
 forecast_ms = join(ms_figroot, 'forecasts_ms')
