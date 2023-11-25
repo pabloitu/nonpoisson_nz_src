@@ -23,8 +23,8 @@ import seaborn as sns
 import cartopy
 from csep.utils.plots import plot_comparison_test
 import rioxarray as rxr
+
 # style must be one of white, dark, whitegrid, darkgrid, ticks
-#
 sns.set_style("darkgrid", {"axes.facecolor": ".9", 'font.family': 'Ubuntu'})
 
 
@@ -70,7 +70,7 @@ def dist_array(geom):
     return row
 
 
-def truncated_GR(n, bval, mag_bin, learning_mmin, target_mmin, target_mmax):
+def truncated_gr(n, bval, mag_bin, learning_mmin, target_mmin, target_mmax):
 
     aval = np.log10(n) + bval * target_mmin
     mag_bins = np.arange(learning_mmin, target_mmax + mag_bin, mag_bin)
@@ -177,7 +177,7 @@ def plot_fit_results(results_fit, cat,
     figure.suptitle(f'SSM parameter fit - {cat.name}')
     plt.tight_layout()
     if figpath:
-        plt.savefig(join(figpath, f'{figprefix}_params_fit.png'), dpi=300)
+        plt.savefig(join(figpath, f'{figprefix}_params_fit.png'), dpi=600)
     plt.show()
 
     plot_args = {'basemap': None,
@@ -186,19 +186,19 @@ def plot_fit_results(results_fit, cat,
     forecasts['gaussian'][np.argmax(scores['gaussian'])].plot(
         plot_args={**plot_args,
                    'title': 'Gaussian SSM - optimal'})
-    plt.savefig(paths.get('temporal', 'fig', f'{figprefix}_gaussian'), dpi=300)
+    plt.savefig(paths.get('temporal', 'fig', f'{figprefix}_gaussian'), dpi=600)
     plt.show()
 
     forecasts['powerlaw'][np.argmax(scores['powerlaw'])].plot(
         plot_args={**plot_args,
                    'title': 'Power-law SSM  - optimal'})
-    plt.savefig(paths.get('temporal', 'fig', f'{figprefix}_powerlaw'), dpi=300)
+    plt.savefig(paths.get('temporal', 'fig', f'{figprefix}_powerlaw'), dpi=600)
     plt.show()
 
     forecasts['adaptive'][np.argmax(scores['adaptive'])].plot(
         plot_args={**plot_args,
                    'title': 'Adaptive SSM  - optimal'})
-    plt.savefig(paths.get('temporal', 'fig', f'{figprefix}_adaptive'), dpi=300)
+    plt.savefig(paths.get('temporal', 'fig', f'{figprefix}_adaptive'), dpi=600)
     plt.show()
 
 
@@ -436,7 +436,7 @@ class Experiment:
         data = np.ones((n_cells, 1)) / n_cells
         mags = self.test_region.magnitudes
         if mags.shape[0] > 1:
-            _, _, gr = truncated_GR(1, 1, 0.1,
+            _, _, gr = truncated_gr(1, 1, 0.1,
                                     mags.min(), mags.min(), mags.max())
             data = np.outer(data, gr)
 
@@ -504,7 +504,6 @@ class Experiment:
                     if kernel_size == 0:
                         n_learn = np.round(len(f_ind)*0.75).astype(int)
                         if ssm in ['gaussian', 'powerlaw']:
-                            # params_search = [15, 20, 35, 50, 75, 100]
                             params_search = [15, 22, 30, 39, 50, 75, 100, 125]
                         elif ssm == 'adaptive':
                             params_search = np.array([4, 6, 8, 10, 12, 15])
@@ -526,9 +525,7 @@ class Experiment:
                                 region=forecast_i.region)
                             cat_i.filter_spatial(self.test_region, in_place=True)
                             cat_i.filter(f'magnitude >= {np.median(cat_i.get_magnitudes())}')
-                            # ax = forecast_i.plot()
-                            # cat_i.plot(ax=ax)
-                            # plt.show()
+
                             fit_f.append(log_score(forecast_i, cat_i))
 
                         k_size = params_search[np.argmax(fit_f)]
@@ -539,7 +536,7 @@ class Experiment:
                         data = pdf.reshape(-1, 1)
                     else:
                         mag = self.test_region.magnitudes
-                        _, _, mag_weights = truncated_GR(
+                        _, _, mag_weights = truncated_gr(
                             1, 1, 1, mag.min(), mag.min(), mag.max())
 
                         data = np.outer(pdf, mag_weights)
@@ -671,393 +668,7 @@ def run_singleloc(origin,
         return prop_rank
 
 
-def run_example_ssm_wellington():
-
-    start = time.process_time()
-
-    ####################################
-    # Initialize Catalog and Region
-    collection_shp = paths.region_nz_collection
-    collection_region = csep.regions.nz_csep_collection_region()
-    catalog = catalogs.cat_oq2csep(
-        catalogs.filter_cat(
-            catalogs.get_cat_nz(name='New Zealand, Non-declustered'),
-            mws=(3.99, 10.0), depth=[40, -2],
-            start_time=dt(1964, 1, 1),
-            shapefile=collection_shp))
-    catalog.filter_spatial(collection_region, in_place=True)
-
-    ####################################
-    # Set experiment parameters
-    centers = [paths.Wellington[0]]
-
-    seed = 23     # seed for reproducibility
-    ssm_class = 'adaptive'   # model class: 'gaussian', 'powerlaw', 'adaptive'
-    ssm_param = 0   # gaussian std; powerlaw d; adaptive N; Set 0 for autofit
-    nmax = 20   # Testing events
-    rtrain = 200       # Collection radius          # 250
-    rtest = 150        # Forecast radius            # 150
-    max_cat_iters = 30     # iters for given N through cat of a subregion      #
-    n_training = [10, 25, 35, 50]
-
-    ####################################
-    # Initialize result arrays
-    np.random.seed(seed)
-    random.seed(seed)
-
-    prop_ranks = {i: np.zeros(3) for i in n_training}
-    models = {i: [] for i in n_training}
-
-    ####################################
-    # Prepare main run function with parameters
-    main_func = partial(run_singleloc,
-                        catalog=catalog,
-                        n_max=nmax,
-                        r_test=rtest,
-                        r_train=rtrain,
-                        n_training=n_training,
-                        max_iters=max_cat_iters,
-                        ssm_class=ssm_class,
-                        kernel_size=ssm_param,
-                        return_models=True)
-
-    ####################################
-    # Run
-    results = list(map(main_func, enumerate(centers)))
-
-    ####################################
-    # Re-order results
-    for res in results:
-        for i in n_training:
-            if res[0][i].shape[0] == 3:
-                prop_ranks[i] += res[0][i]
-                models[i].extend(res[1][i])
-
-    ####################################
-    # Plot forecasts
-    fig = plt.figure(figsize=(16, 8), layout='compressed')
-    titles = ['SSM performs better than URZ',
-              'URZ performs better than SSM',
-              'Statistically indistinguishable']
-    sns.reset_defaults()
-    for n_fig, id_forecast in enumerate([4, 15, 19]):
-        # id_forecast = 9             # 1,2,9 amazing, 6, 19 bad?
-        forecast_i = models[50][0][id_forecast]
-        train_cat_i = models[50][1][id_forecast]
-        test_cat_i = models[50][2][id_forecast]
-
-        urz = GriddedForecast(region=forecast_i.region,
-                              magnitudes=forecast_i.magnitudes,
-                              data=np.ones(forecast_i.data.shape)/forecast_i.data.shape[0])
-        urz.scale(test_cat_i.get_number_of_events())
-        t_test = paired_t_test(forecast_i, urz, test_cat_i, alpha=0.1)
-        dist = np.array(t_test.test_distribution)
-
-        print(f'Forecast {id_forecast}. '
-              f'Information Gain SSM from URZ conf. intervals {dist}')
-        extent = np.array(train_cat_i.region.get_bbox())
-        extent = [extent[0] - 2, extent[1] + 2, extent[2] - 2, extent[3] + 2]
-
-        projection = cartopy.crs.epsg(2193)
-        ax = fig.add_subplot(1, 3, n_fig + 1, projection=projection)
-
-        raster_fn = paths.basemap_bluebrown
-        rds = rxr.open_rasterio(raster_fn)
-        rds.plot.imshow(ax=ax, transform=projection, add_labels=False)
-
-        ax = forecast_i.plot(ax=ax, plot_args={
-            'basemap': None,
-            'projection': projection,
-            'cmap': 'rainbow',
-            'include_cbar': True if n_fig == 0 else False,
-            'clabel': r'       '
-                      r'  $\log\mu(x)/N_{test}$' if n_fig == 0 else False,
-            'clabel_fontsize': 18,
-            'clim': [-2., -0.8]})
-        ax.plot(*train_cat_i.region.tight_bbox().T,
-                transform=cartopy.crs.PlateCarree(), color='steelblue',
-                alpha=0.4, label='Collection regions')
-        ax.plot(*csep.core.regions.nz_csep_region().tight_bbox().T,
-                transform=cartopy.crs.PlateCarree(), color='black',
-                alpha=0.3, label='Testing regions')
-        ax.plot(*csep.core.regions.nz_csep_collection_region().tight_bbox().T,
-                transform=cartopy.crs.PlateCarree(), color='steelblue',
-                alpha=0.4)
-
-        if n_fig == 0:
-            cax = ax.get_figure().get_axes()[1]
-            pos = cax.get_position().translated(-0.35, 0.128)
-            cax.set_position(pos)
-
-            legend_elements = [
-                Line2D([0], [0], marker='s',  markeredgecolor='black', lw=0,
-                       markerfacecolor='none', label='Testing regions',
-                       markersize=16),
-                Line2D([0], [0], marker='s', lw=0, markeredgecolor='steelblue',
-                       markerfacecolor='none', label='Collection regions',
-                       markersize=16),
-                Line2D([0], [0], marker='o',  markeredgecolor='black', lw=0,
-                       markerfacecolor='lightgray', label='Training events',
-                       markersize=16),
-                Line2D([0], [0], marker='o',   markeredgecolor='black', lw=0,
-                       markerfacecolor='red', label='Testing events',
-                       markersize=16)]
-
-            ax.legend(handles=legend_elements, loc=4, fontsize=14)
-
-        ax = train_cat_i.plot(
-            ax=ax,
-            extent=extent,
-            plot_args={
-                'basemap': None,
-                'markercolor': 'black',
-                'legend': True if n_fig == 2 else False,
-                'mag_ticks': [4.0, 5.0, 6.0] if n_fig == 2 else False,
-                'mag_scale': 7,
-                'markersize': 4,
-                'legend_fontsize': 14,
-                'legend_titlesize': 17})
-        ax = test_cat_i.plot(ax=ax,
-                             extent=extent,
-                             plot_args={'basemap': None,
-                                        'projection': projection,
-                                        'markercolor': 'red',
-                                        'mag_scale': 7,
-                                        'alpha': 0.6,
-                                        'markersize': 14,
-                                        'legend': False,
-                                        })
-
-        ax.set_title(titles[n_fig], fontsize=16)
-
-    plt.savefig(join(paths.ms1_figs['fig3'], 'example_ssm.png'), dpi=300)
-    plt.show()
-    sns.set_style("darkgrid",
-                  {"axes.facecolor": ".9", 'font.family': 'Ubuntu'})
-    print(f'Ready: {time.process_time() - start: .2f}')
-
-
-def run_wellington():
-
-    start = time.process_time()
-
-    # Initialize Catalog and Region
-    ####################################
-    collection_shp = paths.region_nz_collection
-    collection_region = csep.regions.nz_csep_collection_region()
-    catalog = catalogs.cat_oq2csep(
-        catalogs.filter_cat(
-            catalogs.get_cat_nz(name='New Zealand, Non-declustered'),
-            mws=(3.99, 10.0), depth=[40, -2],
-            start_time=dt(1964, 1, 1),
-            shapefile=collection_shp))
-    catalog.filter_spatial(collection_region, in_place=True)
-
-    # Set experiment parameters
-    ####################################
-
-    # Auckland = np.array([[174.7, -36.8]])  # < AUCKLAND
-    # Dunedin = np.array([[170.5, -45.9]])  ### < DUNEDIN
-    # Wellington = np.array([[174.8, -41.3]])  # # wellington
-    # Christchurch = np.array([[172.6, -43.5]])  # < AUCKLAND
-    # Queenstown = np.array([[168.1, -45.0]])
-    # Napier = np.array([[176.9, -39.5]])
-    # Tauranga = np.array([[176.2, -37.7]])
-    # Gisborne = np.array([[178.0, -38.7]])7
-    # Invercargill = np.array([[168.4, -46.4]])
-    # NewPlymouth = np.array([[174.7, -39.7]])
-
-    centers = [paths.Wellington[0]]
-
-    seed = 23     # seed for reproducibility
-    ssm_class = 'adaptive'   # model class: 'gaussian', 'powerlaw', 'adaptive'
-    ssm_param = 4   # gaussian std; powerlaw d; adaptive N; Set 0 for autofit
-    nmax = 10   # Testing events                    # new ply 10, kaik20
-    rtrain = 200       # Collection radius          # new ply, kaik 200
-    rtest = 150        # Forecast radius            # new ply, kaik  150
-    max_cat_iters = 300     # iters for given N through cat of a subregion
-    alpha = 0.2
-    # n_training = [10, 25, 35, 50, 75, 100, 150, 200, 300, 400, 500] #full
-    n_training = [25, 50, 100,  200, 500, 600] #full
-    # n_training = [25, 50, 100,  200, 300] #full
-    # n_training = [10, 20, 50, 80, 100, 120]  # new ply
-    # n_training = [100]
-    # Initialize result arrays
-    np.random.seed(seed)
-    random.seed(seed)
-
-    prop_ranks = {i: np.zeros(3) for i in n_training}
-    models = {i: [] for i in n_training}
-
-    ssm_better = []
-    ssm_worse = []
-    ssm_undist = []
-
-    ####################################
-    # Prepare main run function with parameters
-    main_func = partial(run_singleloc,
-                        catalog=catalog,
-                        n_max=nmax,
-                        r_test=rtest,
-                        r_train=rtrain,
-                        n_training=n_training,
-                        max_iters=max_cat_iters,
-                        alpha=alpha,
-                        ssm_class=ssm_class,
-                        kernel_size=ssm_param,
-                        return_models=True)
-
-    ####################################
-    # Run
-    results = list(map(main_func, enumerate(centers)))
-
-    ####################################
-    # Re-order results
-
-    for res in results:
-        for i in n_training:
-            if res[0][i].shape[0] == 3:
-                prop_ranks[i] += res[0][i]
-                models[i].extend(res[1][i])
-    for n, rank in prop_ranks.items():
-        ssm_worse.append(rank[0])
-        ssm_undist.append(rank[1])
-        ssm_better.append(rank[2])
-
-    ####################################
-
-    ssm_better = np.array(ssm_better)
-    ssm_worse = np.array(ssm_worse)
-    ssm_undist = np.array(ssm_undist)
-
-    frac_better = ssm_better / (ssm_better + ssm_worse + ssm_undist)
-    frac_worse = ssm_worse / (ssm_better + ssm_worse + ssm_undist)
-    frac_undist = ssm_undist / (ssm_better + ssm_worse + ssm_undist)
-
-    # Plot figures
-    fig, ax = plt.subplots(1, 1)
-    ax.fill_between(n_training, np.zeros(len(n_training)),
-                    frac_better, color='g', label='SSM is better', alpha=0.2)
-    ax.plot(n_training, frac_better, 'g.--')
-
-    ax.fill_between(n_training, frac_better, frac_better + frac_undist,
-                    color='gray', label='Indistinguishable', alpha=0.2)
-    ax.plot(n_training, 1 - frac_worse, 'r.--')
-    ax.fill_between(n_training, frac_better + frac_undist,
-                    frac_better + frac_undist + frac_worse,
-                    color='r', label='URZ is better',
-                    alpha=0.2)
-    ax.set_title(f'Napier - Gaussian')
-    ax.set_ylim([0, 1])
-    ax.set_xlim([0, max(n_training)])
-    ax.set_xlabel('Number of training events $N_1$')
-    ax.set_ylabel('Fraction of models')
-
-    now = datetime.datetime.now().time()
-    plt.legend(loc=4)
-    plt.savefig(f'test_{now.hour:02d}{now.minute:02d}{now.second:02d}.png')
-    print(f'ready. {time.process_time() - start:.1f}')
-    plt.show()
-    ###################################
-    # Plot forecasts
-    # fig = plt.figure(figsize=(16, 8), layout='compressed')
-    # titles = ['SSM performs better than URZ',
-    #           'URZ performs better than SSM',
-    #           'Statistically indistinguishable']
-    # sns.reset_defaults()
-    # for n_fig, id_forecast in enumerate([0, 1, 2]):
-    #     # id_forecast = 9             # 1,2,9 amazing, 6, 19 bad?
-    #     forecast_i = models[50][0][id_forecast]
-    #     train_cat_i = models[50][1][id_forecast]
-    #     test_cat_i = models[50][2][id_forecast]
-    #
-    #     urz = GriddedForecast(region=forecast_i.region,
-    #                           magnitudes=forecast_i.magnitudes,
-    #                           data=np.ones(forecast_i.data.shape)/forecast_i.data.shape[0])
-    #     urz.scale(test_cat_i.get_number_of_events())
-    #     t_test = paired_t_test(forecast_i, urz, test_cat_i, alpha=0.1)
-    #     dist = np.array(t_test.test_distribution)
-    #
-    #     print(f'Forecast {id_forecast}. '
-    #           f'Information Gain SSM from URZ conf. intervals {dist}')
-    #     extent = np.array(train_cat_i.region.get_bbox())
-    #     extent = [extent[0] - 2, extent[1] + 2, extent[2] - 2, extent[3] + 2]
-    #
-    #     projection = cartopy.crs.epsg(2193)
-    #     ax = fig.add_subplot(1, 3, n_fig + 1, projection=projection)
-    #
-    #     raster_fn = paths.basemap_bluebrown
-    #     rds = rxr.open_rasterio(raster_fn)
-    #     rds.plot.imshow(ax=ax, transform=projection, add_labels=False)
-    #
-    #     ax = forecast_i.plot(ax=ax, plot_args={
-    #         'basemap': None,
-    #         'projection': projection,
-    #         'cmap': 'rainbow',
-    #         'include_cbar': True if n_fig == 0 else False,
-    #         'clabel': r'       '
-    #                   r'  $\log\mu(x)/N_{test}$' if n_fig == 0 else False,
-    #         'clabel_fontsize': 18,
-    #         'clim': [-2., -0.8]})
-    #     ax.plot(*train_cat_i.region.tight_bbox().T,
-    #             transform=cartopy.crs.PlateCarree(), color='steelblue',
-    #             alpha=0.4, label='Collection regions')
-    #     ax.plot(*csep.core.regions.nz_csep_region().tight_bbox().T,
-    #             transform=cartopy.crs.PlateCarree(), color='black',
-    #             alpha=0.3, label='Testing regions')
-    #     ax.plot(*csep.core.regions.nz_csep_collection_region().tight_bbox().T,
-    #             transform=cartopy.crs.PlateCarree(), color='steelblue',
-    #             alpha=0.4)
-    #
-    #     if n_fig == 0:
-    #         cax = ax.get_figure().get_axes()[1]
-    #         pos = cax.get_position().translated(-0.35, 0.128)
-    #         cax.set_position(pos)
-    #
-    #         legend_elements = [
-    #             Line2D([0], [0], marker='s',  markeredgecolor='black', lw=0,
-    #                    markerfacecolor='none', label='Testing regions',
-    #                    markersize=16),
-    #             Line2D([0], [0], marker='s', lw=0, markeredgecolor='steelblue',
-    #                    markerfacecolor='none', label='Collection regions',
-    #                    markersize=16),
-    #             Line2D([0], [0], marker='o',  markeredgecolor='black', lw=0,
-    #                    markerfacecolor='lightgray', label='Training events',
-    #                    markersize=16),
-    #             Line2D([0], [0], marker='o',   markeredgecolor='black', lw=0,
-    #                    markerfacecolor='red', label='Testing events',
-    #                    markersize=16)]
-    #
-    #         ax.legend(handles=legend_elements, loc=4, fontsize=14)
-    #
-    #     ax = train_cat_i.plot(
-    #         ax=ax,
-    #         extent=extent,
-    #         plot_args={
-    #             'basemap': None,
-    #             'markercolor': 'black',
-    #             'legend': True if n_fig == 2 else False,
-    #             'mag_ticks': [4.0, 5.0, 6.0] if n_fig == 2 else False,
-    #             'mag_scale': 7,
-    #             'markersize': 4,
-    #             'legend_fontsize': 14,
-    #             'legend_titlesize': 17})
-    #     ax = test_cat_i.plot(ax=ax,
-    #                          extent=extent,
-    #                          plot_args={'basemap': None,
-    #                                     'projection': projection,
-    #                                     'markercolor': 'red',
-    #                                     'mag_scale': 7,
-    #                                     'alpha': 0.6,
-    #                                     'markersize': 14,
-    #                                     'legend': False,
-    #                                     })
-    #
-    #     ax.set_title(titles[n_fig], fontsize=16)
-    # plt.show()\
-
-
-def run_christchurch(figpath=None):
+def run_christchurch_adaptive(figpath=None):
 
     start = time.process_time()
 
@@ -1079,13 +690,12 @@ def run_christchurch(figpath=None):
 
     seed = 14     # seed for reproducibility
     ssm_class = 'adaptive'   # model class: 'gaussian', 'powerlaw', 'adaptive'
-    ssm_param = 0   # gaussian std; powerlaw d; adaptive N; Set 0 for autofit
-    nmax = 10           # Testing events
+    ssm_param = 7   # gaussian std; powerlaw d; adaptive N; Set 0 for autofit
+    nmax = 20           # Testing events
     rtrain = 200       # Collection radius
     rtest = 150        # Forecast radius
     max_cat_iters = 400     # iters for given N through cat of a subregion
     alpha = 0.4
-    n_training = [10, 25, 35, 50, 75, 100, 150, 200, 280, 400, 500]
     n_training = [25, 50, 100, 200, 280, 400]
 
     # Initialize result arrays
@@ -1164,7 +774,118 @@ def run_christchurch(figpath=None):
 
     plt.legend(loc=4, fontsize=12)
     if figpath:
-        plt.savefig(figpath, dpi=300)
+        plt.savefig(figpath, dpi=600)
+    print(f'ready. {time.process_time() - start:.1f}')
+    plt.show()
+
+
+def run_christchurch_gaussian(figpath=None):
+
+    start = time.process_time()
+
+    ####################################
+    # Initialize Catalog and Region
+    collection_shp = paths.region_nz_collection
+    collection_region = csep.regions.nz_csep_collection_region()
+    catalog = catalogs.cat_oq2csep(
+        catalogs.filter_cat(
+            catalogs.get_cat_nz(name='New Zealand, Non-declustered'),
+            mws=(3.99, 10.0), depth=[40, -2],
+            start_time=dt(1980, 1, 1),
+            shapefile=collection_shp))
+    catalog.filter_spatial(collection_region, in_place=True)
+
+    ####################################
+    # Set experiment parameters
+    centers = [paths.Christchurch[0]]
+
+    seed = 14     # seed for reproducibility
+    ssm_class = 'gaussian'   # model class: 'gaussian', 'powerlaw', 'adaptive'
+    ssm_param = 17   # gaussian std; powerlaw d; adaptive N; Set 0 for autofit
+    nmax = 20           # Testing events
+    rtrain = 200       # Collection radius
+    rtest = 150        # Forecast radius
+    max_cat_iters = 400     # iters for given N through cat of a subregion
+    alpha = 0.4
+    n_training = [25, 50, 100, 200, 280, 400]
+
+    # Initialize result arrays
+    np.random.seed(seed)
+    random.seed(seed)
+
+    prop_ranks = {i: np.zeros(3) for i in n_training}
+    models = {i: [] for i in n_training}
+
+    ssm_better = []
+    ssm_worse = []
+    ssm_undist = []
+
+    ####################################
+    # Prepare main run function with parameters
+    main_func = partial(
+        run_singleloc,
+        catalog=catalog,
+        n_max=nmax,
+        r_test=rtest,
+        r_train=rtrain,
+        n_training=n_training,
+        max_iters=max_cat_iters,
+        alpha=alpha,
+        ssm_class=ssm_class,
+        kernel_size=ssm_param,
+        bound_test_region=collection_region,
+        bound_train_region=collection_region,
+        return_models=True)
+
+    ####################################
+    # Run
+    results = list(map(main_func, enumerate(centers)))
+
+    ####################################
+    # Re-order results
+
+    for res in results:
+        for i in n_training:
+            if res[0][i].shape[0] == 3:
+                prop_ranks[i] += res[0][i]
+                models[i].extend(res[1][i])
+    for n, rank in prop_ranks.items():
+        ssm_worse.append(rank[0])
+        ssm_undist.append(rank[1])
+        ssm_better.append(rank[2])
+
+    ####################################
+
+    ssm_better = np.array(ssm_better)
+    ssm_worse = np.array(ssm_worse)
+    ssm_undist = np.array(ssm_undist)
+
+    frac_better = ssm_better / (ssm_better + ssm_worse + ssm_undist)
+    frac_worse = ssm_worse / (ssm_better + ssm_worse + ssm_undist)
+    frac_undist = ssm_undist / (ssm_better + ssm_worse + ssm_undist)
+
+    # Plot figures
+    fig, ax = plt.subplots(1, 1)
+    ax.fill_between(n_training, np.zeros(len(n_training)),
+                    frac_better, color='g', label='SSM is better', alpha=0.2)
+    ax.plot(n_training, frac_better, 'g.--')
+
+    ax.fill_between(n_training, frac_better, frac_better + frac_undist,
+                    color='gray', label='Indistinguishable', alpha=0.2)
+    ax.plot(n_training, 1 - frac_worse, 'r.--')
+    ax.fill_between(n_training, frac_better + frac_undist,
+                    frac_better + frac_undist + frac_worse,
+                    color='r', label='URZ is better',
+                    alpha=0.2)
+    ax.set_title(f'Christchurch - Gaussian SSM', fontsize=16)
+    ax.set_ylim([0, 1])
+    ax.set_xlim([0, max(n_training)])
+    ax.set_xlabel('Number of training events $N_1$', fontsize=14)
+    ax.set_ylabel('Fraction of forecasts', fontsize=14)
+
+    plt.legend(loc=4, fontsize=12)
+    if figpath:
+        plt.savefig(figpath, dpi=600)
     print(f'ready. {time.process_time() - start:.1f}')
     plt.show()
 
@@ -1275,7 +996,7 @@ def run_napier(figpath=None):
 
     plt.legend(loc=4, fontsize=12)
     if figpath:
-        plt.savefig(figpath, dpi=300)
+        plt.savefig(figpath, dpi=600)
     print(f'ready. {time.process_time() - start:.1f}')
     plt.show()
 
@@ -1386,12 +1107,12 @@ def run_napier_dc(figpath=None):
 
     plt.legend(loc=4, fontsize=12)
     if figpath:
-        plt.savefig(figpath, dpi=300)
+        plt.savefig(figpath, dpi=600)
     print(f'ready. {time.process_time() - start:.1f}')
     plt.show()
 
 
-def run_example_ssm_napier():
+def run_example_ssm_napier(fig_path):
 
     start = time.process_time()
 
@@ -1555,54 +1276,59 @@ def run_example_ssm_napier():
 
         ax.set_title(titles[n_fig], fontsize=16)
 
-    fig.savefig(join(paths.ms1_figs['fig3'], 'example_ssm.png'), dpi=300)
+    fig.savefig(fig_path, dpi=600)
     plt.show()
     sns.set_style("darkgrid",
                   {"axes.facecolor": ".9", 'font.family': 'Ubuntu'})
     print(f'Ready: {time.process_time() - start: .2f}')
 
 
-
-
-
 if __name__ == '__main__':
 
-    # Calibrate SSM models
-    # cat = catalogs.cat_oq2csep(
-    #     catalogs.filter_cat(
-    #         catalogs.get_cat_nz(name='New Zealand, non-declustered'),
-    #         mws=(3.95, 10.0), depth=[40, -2],
-    #         start_time=dt(1964, 1, 1),
-    #         shapefile=paths.region_nz_collection))
-    # results_nondc = calibrate_models(cat)
-    # plot_fit_results(results_nondc, cat,
-    #                  paths.get('temporal', 'fig'),
-    #                  clim=[-4, 0])
+    # Calibrate global SSM models
+    cat = catalogs.cat_oq2csep(
+        catalogs.filter_cat(
+            catalogs.get_cat_nz(name='New Zealand, non-declustered'),
+            mws=(3.95, 10.0), depth=[40, -2],
+            start_time=dt(1964, 1, 1),
+            shapefile=paths.region_nz_collection))
+    results_nondc = calibrate_models(cat)
+    # results stored in 'nonpoisson_nz/results/temporal/fig'
+    plot_fit_results(results_nondc, cat,
+                     paths.get('temporal', 'fig'),
+                     clim=[-4, 0])
 
-    # cat = catalogs.cat_oq2csep(
-    #     catalogs.filter_cat(
-    #         catalogs.get_cat_nz_dc(name='New Zealand, declustered'),
-    #         mws=(3.95, 10.0), depth=[40, -2],
-    #         start_time=dt(1964, 1, 1),
-    #         shapefile=paths.region_nz_collection))
-    # results_dc = calibrate_models(cat)
-    # plot_fit_results(results_dc,  cat,
-    #                  paths.get('temporal', 'fig'),
-    #                  clim=[-4, -1],
-    #                  figprefix='nzdc')
+    cat = catalogs.cat_oq2csep(
+        catalogs.filter_cat(
+            catalogs.get_cat_nz_dc(name='New Zealand, declustered'),
+            mws=(3.95, 10.0), depth=[40, -2],
+            start_time=dt(1964, 1, 1),
+            shapefile=paths.region_nz_collection))
+    results_dc = calibrate_models(cat)
+    # results stored in 'nonpoisson_nz/results/temporal/fig'
+    plot_fit_results(results_dc,  cat,
+                     paths.get('temporal', 'fig'),
+                     clim=[-4, -1],
+                     figprefix='nzdc')
 
-    path_napier_results = join(paths.ms1_figs['fig4'],
-                               'napier_ssm_results.png')
-    run_napier(path_napier_results)
-    # path_napier_dc_results = join(paths.ms1_figs['fig4'],
-    #                               'napier_dc_ssm_results.png')
-    # run_napier_dc(path_napier_dc_results)
-    # run_example_ssm_napier()
+    # Run experiments and manuscript figures
+    fig2_example_ssm = join(paths.ms1_figs['fig3'],
+                            'example_ssm.png')
+    run_example_ssm_napier(fig2_example_ssm)
 
-    # path_christchurch_results = join(paths.ms1_figs['fig4'],
-    #                            'christchurch_ssm_results.png')
-    # run_christchurch(path_christchurch_results)
+    fig4a_napier_nondc = join(paths.ms1_figs['fig4'], 'napier_ssm_results.png')
+    run_napier(fig4a_napier_nondc)
 
+    fig4b_napier_dc = join(paths.ms1_figs['fig4'], 'napier_dc_ssm_results.png')
+    run_napier_dc(fig4b_napier_dc)
+
+    fig_christchurch = join(paths.ms1_figs['fig4'],
+                            'christchurch_adaptiveresults.png')
+    run_christchurch_adaptive(fig_christchurch)
+
+    fig_christchurch = join(paths.ms1_figs['fig4'],
+                            'christchurch_gaussian_results.png')
+    run_christchurch_gaussian(fig_christchurch)
 
 
 #
