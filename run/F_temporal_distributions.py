@@ -68,6 +68,8 @@ def create_negbinom(fig_folder):
                                        kernel_size=ksize)
     negbinom.sim_var.plot_logratio(ax=ax, color=color, ylims=ration2_ylims,
                                    markersize=msize, kernel_size=ksize)
+    ax.vlines(80, -2.1, 2.1, color='gray', lw=1, linestyle='--')
+    ax.vlines(150, -2.1, 2.1, color='gray', lw=1, linestyle='--')
     ax.legend(handles=legend_elements, loc='upper right',
               fontsize=12, title_fontsize=12)
 
@@ -87,8 +89,8 @@ def create_negbinom(fig_folder):
         ax.legend(title=f'$N_1={m}$', fontsize=12, title_fontsize=12)
         ax.set_xlim([-10, 800])
 
-    fname = join(fig_folder, f'model_{model_name}.jpeg')
-    fig.savefig(fname, dpi=300)
+    fname = join(fig_folder, f'model_{model_name}.jpg')
+    fig.savefig(fname, dpi=800)
     plt.show()
 
 
@@ -136,6 +138,8 @@ def create_lognorm(fig_folder):
     Cat_analysis.cat_var.plot_logratio(ax=ax, markersize=0.02, kernel_size=ksize)
     lognorm.sim_var.plot_logratio(ax=ax, color=color, ylims=ration2_ylims,
                                    markersize=msize, kernel_size=ksize)
+    ax.vlines(80, -2.1, 2.1, color='gray', lw=1, linestyle='--')
+    ax.vlines(150, -2.1, 2.1, color='gray', lw=1, linestyle='--')
     ax.legend(handles=legend_elements, loc='upper right',
               fontsize=12, title_fontsize=12)
 
@@ -154,13 +158,13 @@ def create_lognorm(fig_folder):
         ax.legend(title=f'$N_1={m}$', fontsize=12, title_fontsize=12)
         ax.set_xlim([-10, 800])
 
-    fname = join(fig_folder, f'model_{model_name}.jpeg')
-    fig.savefig(fname, dpi=300)
+    fname = join(fig_folder, f'model_{model_name}.jpg')
+    fig.savefig(fname, dpi=800)
     plt.show()
 
 
 if __name__ == '__main__':
-    folder = paths.ms1_figs['fig12']
+    folder = paths.ms1_figs['fig9']
     create_negbinom(folder)
-    folder = paths.ms1_figs['fig13']
+    folder = paths.ms1_figs['fig10']
     create_lognorm(folder)

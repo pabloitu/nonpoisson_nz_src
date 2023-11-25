@@ -1,10 +1,16 @@
+import os
+
 from nonpoisson import paths
 from nonpoisson import catalogs
+from nonpoisson import temporal
 from nonpoisson.temporal import CatalogAnalysis
 
 import numpy as np
+import random
 import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib.lines import Line2D
+
 from datetime import datetime as dt
 from os.path import join
 
@@ -20,6 +26,88 @@ N_ITER = 2000
 ETAS_NSIMS = 1000
 RATE_VAR_PARAMS = {'n_disc': np.arange(1, N_MAX),
                    'max_iters': N_ITER}
+
+
+def fig_sampling(figpath):
+
+    np.random.seed(32)
+    random.seed(32)
+
+    os.makedirs(os.path.dirname(figpath), exist_ok=True)
+    cat_nz = catalogs.filter_cat(catalogs.get_cat_nz(), mws=(3.99, 10),
+                                 depth=(40, -2),
+                                 start_time=dt(1960, 1, 1),
+                                 shapefile=paths.region_nz_collection)
+    cat_nz.sort_catalogue_chronologically()
+    nz_analysis = CatalogAnalysis(cat_nz, name='nz',
+                                  params={'n_disc': np.arange(1, N_MAX),
+                                          'max_iters': N_ITER})
+    nz_analysis.get_ratevar()
+
+    model_i = temporal.backwardPoisson()
+    model_i.get_params(nz_analysis)
+    model_i.simulate(nsims=N_ITER)
+
+    color = 'red'
+    msize = 0.005
+    ksize = 5
+    n2_ylims = [0, 1100]
+    ration2_ylims = [-1.3, 1.3]
+
+    fig, axs = plt.subplots(2, 2, figsize=(12, 8),
+                            constrained_layout=True,
+                            gridspec_kw={'height_ratios': [5, 4]})
+
+    # Top-Left figure
+    legend_elements = [Line2D([0], [0], color='steelblue', lw=0,
+                              marker='.', label=r'Catalogue'),
+                       Line2D([0], [0], color=color, lw=0,
+                              marker='.', label='Poisson'),
+                       Line2D([0], [0], color='black', lw=1,
+                              linestyle='-', label=r'Envelope $\alpha=0.05$')]
+    ax = nz_analysis.cat_var.plot_n2(ax=axs[0, 0], markersize=0.02,
+                                     kernel_size=ksize)
+    ax = model_i.sim_var.plot_n2(ax=ax, color=color, ylims=n2_ylims,
+                                 markersize=msize, kernel_size=ksize)
+    ax.vlines(80, 0, 1100, color='black', linestyle='--', linewidth=1)
+    ax.text(80, 300, 'c)', fontsize=14, horizontalalignment='right',
+            rotation=90)
+    ax.vlines(180, 0, 1100, color='black', linestyle='--', linewidth=1)
+    ax.text(180, 300, 'd)', fontsize=14, horizontalalignment='right',
+            rotation=90)
+
+    ax.set_xlim([1, 300])
+    ax.legend(handles=legend_elements, loc='upper left', fontsize=12)
+    ax.set_title('a)', loc='left', fontsize=16, fontweight="bold")
+
+    # Top-right figure
+    ax = nz_analysis.cat_var.plot_logratio(ax=axs[0, 1], markersize=0.02,
+                                           kernel_size=ksize)
+    ax = model_i.sim_var.plot_logratio(ax=ax, color=color, ylims=ration2_ylims,
+                                       markersize=msize, kernel_size=ksize)
+    ax.set_xlim([1, 300])
+    ax.legend(handles=legend_elements, loc='upper right', fontsize=12)
+    ax.set_title('b)', loc='left', fontsize=16, fontweight="bold")
+    # plt.savefig(join(figure_folder, 'nz_cat_poisson_logratio.png'), dpi=dpi)
+    # plt.show()
+
+    # Bottom figures
+    index = ['c)', 'd)']
+    for m, ax, idx in zip([80, 180], axs[1, :], index):
+
+        bins = np.linspace(0, 700, 71)
+        range_ = nz_analysis.cat_var.plot_histogram(m, ax=ax, bins=bins,
+                                                    label=f'Catalogue')
+        model_i.sim_var.plot_histogram(m, ax=ax, range_=range_,  bins=bins,
+                                       color=color, label=f'Poisson')
+        ax.set_xlabel(r'$N_2$', fontsize=14)
+        ax.set_xlim([-10, 600])
+        ax.set_ylabel(f"$P\{{ N_2 | N_1 = {m} \}}$", fontsize=14)
+        ax.legend(fontsize=12)
+        ax.set_title(f'{idx}', fontsize=16, loc='left', fontweight="bold")
+
+    plt.savefig(figpath, dpi=500)
+    plt.show()
 
 
 def rate_var_regions():
@@ -72,7 +160,10 @@ def rate_var_etas():
         analysis.save()
 
 
-def fig_ratevar(figpath, nsims=1000, savefig=True):
+def fig_ratevar(figpath, nsims=1000):
+
+
+    os.makedirs(os.path.dirname(figpath), exist_ok=True)
 
     n_max = 400
     regions = ['nz', 'japan', 'california', 'italy', 'global']
@@ -143,14 +234,14 @@ def fig_ratevar(figpath, nsims=1000, savefig=True):
     axs[2].legend(ncol=2, columnspacing=0.8, fontsize=10.5)
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.1)
-    if savefig:
-        plt.savefig(figpath, dpi=300)
+    plt.savefig(figpath, dpi=900)
     plt.show()
 
 
 if __name__ == '__main__':
 
-    rate_var_regions()
-    rate_var_etas()
-    ms_figpath = join(paths.ms1_figs['fig11'], f'rate_variability.png')
-    fig_ratevar(ms_figpath, nsims=ETAS_NSIMS, savefig=True)
+    # fig_sampling(join(paths.ms1_figs['fig7'], 'cat_variability_poisson.png'))
+    # rate_var_regions()
+    # rate_var_etas()
+    ms_figpath = join(paths.ms1_figs['fig8'], f'rate_variability.png')
+    fig_ratevar(ms_figpath, nsims=ETAS_NSIMS)

@@ -46,8 +46,11 @@ class CatalogVariability(object):
         self.ti1.append(ti1)
         self.ti2.append(ti2)
 
-    def plot_n2(self, color='steelblue', start=0, end=np.inf, plot_points=True, alpha=0.05,
+    def plot_n2(self,ax=None, color='steelblue', start=0, end=np.inf, plot_points=True, alpha=0.05,
           markersize=0.1, linewidth=0.8, ylims=None, kernel_size=3, title=None):
+
+        if ax is None:
+            fig, ax = plt.subplots(1, 1)
 
         ind = np.argwhere(np.logical_and(np.array(self.n) > start, np.array(self.n) < end)).ravel()
         N = [self.n[i] for i in ind]
@@ -56,19 +59,20 @@ class CatalogVariability(object):
 
         if plot_points:
             for i, j in enumerate(N):
-                plt.plot([j] * len(N2[i]), N2[i], '.',
+                ax.plot([j] * len(N2[i]), N2[i], '.',
                          color=color, markersize=markersize)
 
         bound_max = medfilt([np.quantile(ratio_n, 1 - alpha/2.) for ratio_n in N2], kernel_size=kernel_size)
         bound_min = medfilt([np.quantile(ratio_n, alpha/2.) for ratio_n in N2], kernel_size=kernel_size)
-        plt.plot(N, bound_min, c=color, linewidth=linewidth, linestyle='-')
-        plt.plot(N, bound_max, c=color, linewidth=linewidth, linestyle='-')
-        plt.xlim([min(N), max(N)])
-        plt.xlabel(r'$N_1$ ', fontsize=14)
-        plt.ylabel(r'$N_2$', fontsize=14)
-        plt.title(title)
-        plt.ylim(ylims)
-        plt.tight_layout()
+        ax.plot(N, bound_min, c=color, linewidth=linewidth, linestyle='-')
+        ax.plot(N, bound_max, c=color, linewidth=linewidth, linestyle='-')
+        ax.set_xlim([min(N), max(N)])
+        ax.set_xlabel(r'$N_1$ ', fontsize=14)
+        ax.set_ylabel(r'$N_2$', fontsize=14)
+        ax.set_title(title)
+        ax.set_ylim(ylims)
+
+        return ax
 
     def plot_ratio(self, color='steelblue', start=0, end=np.inf, plot_points=True, alpha=0.05,
           markersize=0.1, linewidth=0.8, ylims=None, kernel_size=3, low_cutoff=-2, title=None):
@@ -126,7 +130,11 @@ class CatalogVariability(object):
         ax.set_ylim(ylims)
         ax.set_xlim([min(N), max(N)])
 
+        return ax
+
     def plot_histogram(self, n, ax=None, bins=50, range_=None, label='Results', ratio=False, color=None):
+
+
 
         if ax is None:
             fig, ax = plt.subplots(1, 1)
