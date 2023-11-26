@@ -5,3 +5,5 @@ dependencies:
     - python=3.10.12
     - openquake.engine=3.16.4
     - pycsep=0.6.2
+    - gdal=3.8.0
+    - paraview==5.11.2

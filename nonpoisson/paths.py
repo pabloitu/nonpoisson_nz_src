@@ -18,7 +18,7 @@ export = join(main, 'export')
 # Raw data subfolders
 basemaps = join(data, 'basemaps')
 catalogs = join(data, 'catalogs')
-gpsmodels = join(data, 'gnss_models')
+gpsmodels = join(data, 'gnss')
 forecasts = join(data, 'forecast_models')
 regions = join(data, 'regions')
 hazardmodels = join(data, 'hazard_models')
@@ -46,12 +46,9 @@ csep_testing = join(regions, 'new_zealand/csep_testing.csv')
 points = join(gpsmodels, 'points.csv')
 gps_source = join(gpsmodels, 'source')
 gps_processed = join(gpsmodels, 'processed')
+gps_hw_final = join(gps_source, 'VDoHS_solution_corr_sill.csv')
 
-## Final models batch
-gps_secondmodels = join(gps_source, 'new_models')
-gps_hw_final = join(gps_secondmodels, 'VDoHS_solution_corr_sill.csv')
-
-## Processed models
+# Processed gnss models
 model_names = ['hw_final']
 gps_proc_models = {i: join(gps_processed, '%s.csv' % i) for i in model_names}
 
@@ -89,7 +86,12 @@ results_path = {'catalogs': {'dir': join(results, 'catalogs'),
                              'serial': None,
                              'csv': None,
                              'fig': None},
-                'spatial': {'dir': join(results, 'spatial')},
+                'spatial': {'dir': join(results, 'spatial'),
+                            'serial': None,
+                            'raster': None,
+                            'shp': None,
+                            'vtk': None,
+                            'fig': None},
                 'hazard': {'dir': join(results, 'hazard')}}
 
 subfolders = ['fig', 'csv', 'raster', 'shp', 'serial', 'vtk']
