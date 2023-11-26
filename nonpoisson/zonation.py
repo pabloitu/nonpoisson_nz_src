@@ -504,7 +504,6 @@ class GeodeticModel(object):
 
         for mask in index_masks:
             closed = binary_closing(mask, structure=np.ones((smooth, smooth)))
-            # new_img = binary_opening(new_img, structure=np.ones((4, 4)))
             new_img = remove_small_objects(closed, 1000)
             new_img = remove_small_holes(new_img, 900)
             if len(np.unique(new_img)) != len(np.unique(closed)):
@@ -742,20 +741,27 @@ class GeodeticModel(object):
         plt.axvline(range_[0], color='red', linestyle='--')
         plt.axvline(range_[1], color='red', linestyle='--')
 
-        legend_elements = [Line2D([0], [0], color='steelblue', lw=5, label=var + r' distribution'),
-                           Line2D([0], [0], color='red', lw=1, linestyle='--', label=r'99% mass intervals')]
+        legend_elements = [Line2D([0], [0], color='steelblue',
+                                  lw=5, label=var + r' distribution'),
+                           Line2D([0], [0], color='red', lw=1,
+                                  linestyle='--', label=r'99% mass intervals')]
         if len(bins):
-            legend_elements.append(Line2D([0], [0], color='green', lw=1, linestyle='--', label='Binning'))
+            legend_elements.append(Line2D([0], [0], color='green',
+                                          lw=1, linestyle='--',
+                                          label='Bin edges'))
         for i in bins:
             plt.axvline(i, linewidth=2, color='green', linestyle='--')
         if legend:
-            fig.get_axes()[0].legend(handles=legend_elements, fontsize=legend_size, loc='upper right')
+            fig.get_axes()[0].legend(handles=legend_elements,
+                                     fontsize=legend_size,
+                                     loc='best',
+                                     borderaxespad=0.8)
 
         limits = np.array([range_[0], *bins, range_[1]])
         midpoint_bins = [(limits[i] + limits[i + 1]) / 2 for i in range(len(limits) - 1)]
         for i, m in enumerate(midpoint_bins):
             plt.text(m, np.max(hist[0]), f'{i+1}', color='darkgreen',
-                     fontsize=14, va='bottom', ha='center')
+                     fontsize=16, va='bottom', ha='center')
 
 
         fig.get_axes()[0].set_xlabel(var, fontsize=28)
@@ -765,7 +771,7 @@ class GeodeticModel(object):
         plt.xlim(xlims)
         plt.ylim([0.01, None])
         plt.tight_layout()
-        plt.savefig(save_path, dpi=dpi, facecolor=(0, 0, 0, 0))
+        plt.savefig(save_path, dpi=dpi)
         plt.show()
         return hist
 

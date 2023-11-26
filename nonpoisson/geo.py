@@ -465,10 +465,9 @@ def raster2vtk3d(fname_vtk, array_raster=None, array_names=[], basemap=None, dem
         g = np.abs(basemap.GetRasterBand(2).ReadAsArray().flatten(order='F'))
         b = np.abs(basemap.GetRasterBand(3).ReadAsArray().flatten(order='F'))
         rgb = np.vstack((r,g,b)).T
-        grid.point_arrays["RGB"] =  rgb
+        grid.point_arrays["RGB"] = rgb
 
-    
-    if array_raster:   
+    if array_raster:
         if type(array_raster) == str: # raster path or object
             array_raster = gdal.Open(array_raster)
 
@@ -640,7 +639,6 @@ def raster2vti(fname_vti, raster, data_struct,
     vtk_mask.SetName('mask')
     image_data.GetCellData().AddArray(vtk_mask)
     write_vtk(fname_vti, image_data)
-
 
 
 def model2raster(array, storedir, filename, grid, res, srs='EPSG:4326'):
