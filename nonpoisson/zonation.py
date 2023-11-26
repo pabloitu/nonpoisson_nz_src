@@ -2,6 +2,7 @@ import copy
 
 from nonpoisson import paths
 import scipy
+from scipy.interpolate import griddata
 from scipy.stats import entropy
 import scipy.interpolate as sci
 from matplotlib.lines import Line2D
@@ -34,7 +35,7 @@ sns.set_style("darkgrid", {"axes.facecolor": ".9", 'font.family': 'Ubuntu'})
 
 
 def extrapolate_nans(x, y, v, method='nearest'):
-    '''
+    """
     Extrapolate the NaNs or masked values in a grid INPLACE using nearest
     value.
 
@@ -49,178 +50,35 @@ def extrapolate_nans(x, y, v, method='nearest'):
 
     * v : 1D array
         The array with NaNs or masked values extrapolated.
-    '''
+    """
 
     if np.ma.is_masked(v):
         nans = v.mask
     else:
         nans = np.isnan(v)
     notnans = np.logical_not(nans)
-    v[nans] = scipy.interpolate.griddata((x[notnans], y[notnans]), v[notnans],
-                                         (x[nans], y[nans]), method=method).ravel()
+    v[nans] = griddata((x[notnans], y[notnans]), v[notnans],
+                       (x[nans], y[nans]),
+                       method=method).ravel()
     return v
 
 
 class GNSSImporter:
 
     @staticmethod
-    def import_kaj():
-        mesh = paths.gps_kash_mesh_llh0
-        data = paths.gps_kaj_bf
-        Mesh = scipy.io.loadmat(mesh)
-        Results = scipy.io.loadmat(data)
-        df = pandas.read_csv(paths.points, delimiter=',', header=0)
-        xy = np.vstack((df['lon'], df['lat'])).T
-
-        centroids = [value for key, value in Mesh.items() if 'centroids' in key.lower()][0]
-        vals = Results['Exx_mean']
-        interp_x = scipy.interpolate.griddata(centroids, vals, xy, method='nearest')
-        exx = extrapolate_nans(xy[:, 0], xy[:, 1], interp_x.ravel())
-
-        vals = Results['Eyy_mean']
-        interp_y = scipy.interpolate.griddata(centroids, vals, xy, method='nearest')
-        eyy = extrapolate_nans(xy[:, 0], xy[:, 1], interp_y.ravel())
-
-        vals = Results['Exy_mean']
-        interp_xy = scipy.interpolate.griddata(centroids, vals, xy, method='nearest')
-        exy = extrapolate_nans(xy[:, 0], xy[:, 1], interp_xy.ravel())
-
-        Array = np.hstack((xy, exx.reshape((-1, 1)), eyy.reshape((-1, 1)), exy.reshape((-1, 1))))
-        np.savetxt(paths.gps_proc_models['kaj_bf'], Array, delimiter=',', header='lon,lat,exx,exy,eyy', comments='')
-
-        mesh = paths.gps_kash_mesh_llh0
-        data = paths.gps_kaj
-        Mesh = scipy.io.loadmat(mesh)
-        Results = scipy.io.loadmat(data)
-        df = pandas.read_csv(paths.points, delimiter=',', header=0)
-        xy = np.vstack((df['lon'], df['lat'])).T
-
-        centroids = [value for key, value in Mesh.items() if 'centroids' in key.lower()][0]
-        vals = np.mean(Results['Exx_realizations'], axis=1)
-        interp_x = scipy.interpolate.griddata(centroids, vals, xy, method='nearest')
-        exx = extrapolate_nans(xy[:, 0], xy[:, 1], interp_x.ravel())
-
-        vals = np.mean(Results['Exx_realizations'], axis=1)
-        interp_y = scipy.interpolate.griddata(centroids, vals, xy, method='nearest')
-        eyy = extrapolate_nans(xy[:, 0], xy[:, 1], interp_y.ravel())
-
-        vals = np.mean(Results['Exy_realizations'], axis=1)
-        interp_xy = scipy.interpolate.griddata(centroids, vals, xy, method='nearest')
-        exy = extrapolate_nans(xy[:, 0], xy[:, 1], interp_xy.ravel())
-
-        Array = np.hstack((xy, exx.reshape((-1, 1)), eyy.reshape((-1, 1)), exy.reshape((-1, 1))))
-        np.savetxt(paths.gps_proc_models['kaj'], Array, delimiter=',', header='lon,lat,exx,exy,eyy', comments='')
-
-        return Array
-
-    @staticmethod
-    def ian_hik():
-
-        data = scipy.io.loadmat(paths.gps_ian_hikrem)
-        centroids = np.array([i[0][0].ravel() for i in [data['trim']['x'], data['trim']['y']]]).T
-        points = np.genfromtxt(paths.points, delimiter=',', skip_header=1)
-        eps = np.hstack([data['exx'], data['eyy'], data['exy']])
-        interp = 1e6 * scipy.interpolate.griddata(centroids, eps, points, method='linear')
-        interp = np.vstack([extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]), extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
-        Array_hik = np.hstack((points, interp))
-        np.savetxt(paths.gps_proc_models['ian_hik'], Array_hik, delimiter=',', header='lon,lat,exx,eyy,exy', comments='', fmt='%.8e')
-
-    @staticmethod
-    def ian_nohik():
-
-        data = scipy.io.loadmat(paths.gps_ian)
-        centroids = np.array([i[0][0].ravel() for i in [data['trim']['x'], data['trim']['y']]]).T
-        points = np.genfromtxt(paths.points, delimiter=',', skip_header=1)
-        eps = np.hstack([data['exx'], data['eyy'], data['exy']])
-        interp = 1e6 * scipy.interpolate.griddata(centroids, eps, points, method='linear', fill_value=np.nan)
-        interp = np.vstack([extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]), extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
-        interp = np.vstack([extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]), extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
-        Array_nohik = np.hstack((points, interp))
-        np.savetxt(paths.gps_proc_models['ian_nohik'], Array_nohik, delimiter=',', header='lon,lat,exx,eyy,exy', comments='', fmt='%.8e')
-
-    @staticmethod
-    def geostats_hik():
-
-        eps11 = np.average(np.genfromtxt(paths.gps_geostats_hikrem_eps11), axis=0)
-        eps12 = np.average(np.genfromtxt(paths.gps_geostats_hikrem_eps12), axis=0)
-        eps22 = np.average(np.genfromtxt(paths.gps_geostats_hikrem_eps22), axis=0)
-        centroids = np.genfromtxt(paths.gps_geostats_points, delimiter=',')
-        points = np.genfromtxt(paths.points, delimiter=',', skip_header=1)
-        interp = scipy.interpolate.griddata(centroids, np.vstack([eps11, eps22, eps12]).reshape(-1, 3), points, method='nearest')
-        interp = np.vstack([extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]), extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
-        Array_hik = np.hstack((points, interp))
-        np.savetxt(paths.gps_proc_models['geostats_hik'], Array_hik, delimiter=',', header='lon,lat,exx,eyy,exy', comments='', fmt='%.8e')
-
-    @staticmethod
-    def geostats_nohik():
-        eps11 = np.average(np.genfromtxt(paths.gps_geostats_eps11), axis=0)
-        eps12 = np.average(np.genfromtxt(paths.gps_geostats_eps12), axis=0)
-        eps22 = np.average(np.genfromtxt(paths.gps_geostats_eps22), axis=0)
-        centroids = np.genfromtxt(paths.gps_geostats_points, delimiter=',')
-        points = np.genfromtxt(paths.points, delimiter=',', skip_header=1)
-        interp = scipy.interpolate.griddata(centroids, np.vstack([eps11, eps22, eps12]).reshape(-1, 3), points, method='nearest')
-        interp = np.vstack([extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]), extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
-        Array_nohik = np.hstack((points, interp))
-        np.savetxt(paths.gps_proc_models['geostats_nohik'], Array_nohik, delimiter=',', header='lon,lat,exx,eyy,exy', comments='', fmt='%.8e')
-
-    @staticmethod
-    def haines_hik():
-
-        Data = np.genfromtxt(paths.gps_haines_hikrem, skip_header=1, delimiter=',')
-        points = np.genfromtxt(paths.points, delimiter=',', skip_header=1)
-        interp = scipy.interpolate.griddata(Data[:, :2], Data[:, 4:7], points, method='nearest')
-        interp = np.vstack([extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]), extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
-        haines_hik = np.hstack((points, interp[:, [0, 2, 1]]))
-        np.savetxt(paths.gps_proc_models['haines_hik'], haines_hik, delimiter=',', header='lon,lat,exx,eyy,exy', comments='', fmt='%.8e')
-
-    @staticmethod
-    def haines_nohik():
-
-        Data = np.genfromtxt(paths.gps_haines, skip_header=1, delimiter=',')
-        points = np.genfromtxt(paths.points, delimiter=',', skip_header=1)
-        interp = scipy.interpolate.griddata(Data[:, :2], Data[:, 4:], points, method='nearest')
-        interp = np.vstack([extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]), extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
-        haines_nohik = np.hstack((points, interp[:, [0, 2, 1]]))
-        np.savetxt(paths.gps_proc_models['haines_nohik'], haines_nohik, delimiter=',', header='lon,lat,exx,eyy,exy', comments='', fmt='%.8e')
-
-    @staticmethod
-    def hw_original():
-        Data = np.genfromtxt(paths.gps_hw_original)
-        points = np.genfromtxt(paths.points, delimiter=',', skip_header=1)
-        interp = scipy.interpolate.griddata(Data[:, :2], Data[:, 2:], points, method='nearest')
-        interp = np.vstack([extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]), extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
-        hw_original = np.hstack((points, interp))
-        np.savetxt(paths.gps_proc_models['hw_original'], hw_original, delimiter=',', header='lon,lat,j2,tau_max,ss', comments='', fmt='%.8e')
-
-    @staticmethod
-    def hw_sillremoved():
-
-        Data = np.genfromtxt(paths.gps_hw_sillremoved)
-        points = np.genfromtxt(paths.points, delimiter=',', skip_header=1)
-        interp = scipy.interpolate.griddata(Data[:, :2], Data[:, 2:], points, method='nearest')
-        interp = np.vstack([extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]), extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
-        hw_sillremoved = np.hstack((points, interp))
-        np.savetxt(paths.gps_proc_models['hw_sillremoved'], hw_sillremoved, delimiter=',', header='lon,lat,j2,tau_max,ss', comments='', fmt='%.8e')
-
-    @staticmethod
     def hw_final():
         Data = np.genfromtxt(paths.gps_hw_final, delimiter=',', skip_header=1)
         points = np.genfromtxt(paths.points, delimiter=',', skip_header=1)
-        interp = scipy.interpolate.griddata(Data[:, :2], Data[:, 4:], points, method='nearest')
-        interp = np.vstack([extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
-                            extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
+        interp = scipy.interpolate.griddata(Data[:, :2], Data[:, 4:], points,
+                                            method='nearest')
+        interp = np.vstack(
+            [extrapolate_nans(points[:, 0], points[:, 1], interp[:, 0]),
+             extrapolate_nans(points[:, 0], points[:, 1], interp[:, 1]),
+             extrapolate_nans(points[:, 0], points[:, 1], interp[:, 2])]).T
         haines_final = np.hstack((points, interp[:, [0, 2, 1]]))
-        np.savetxt(paths.gps_proc_models['hw_final'], haines_final, delimiter=',', header='lon,lat,exx,eyy,exy', comments='', fmt='%.8e')
+        np.savetxt(paths.gps_proc_models['hw_final'], haines_final,
+                   delimiter=',', header='lon,lat,exx,eyy,exy', comments='',
+                   fmt='%.8e')
 
         return haines_final
 
@@ -241,12 +99,11 @@ class GeodeticModel(object):
         self.bin_edges = {}
         self.polygons = {}
 
-    def import_data(self, process_raw=True, attributes=('exx', 'eyy', 'exy'),
-                    res_0=0.02):
+    def import_data(self, process_raw=True, res_0=0.02):
 
         from nonpoisson import geo
         if process_raw:
-            func = getattr(GNSSImporter, self.name)()
+            getattr(GNSSImporter, self.name)()
         with open(paths.gps_proc_models[self.name], 'r') as file_:
             attributes = file_.readline().strip().split(',')[2:]
         geo.rasterize_results(paths.gps_proc_models[self.name],
@@ -262,17 +119,19 @@ class GeodeticModel(object):
         lats = []
         for j in range(self.raster['dims'][1] - 1):
             for i in range(self.raster['dims'][0] - 1):
-                # lons.append(self.raster['affine'][1] * i + self.raster['affine'][0])
-                # lats.append(self.raster['affine'][-1] * j + self.raster['affine'][-3])
-                lons.append(self.raster['affine'][1] * i + self.raster['affine'][0])
-                lats.append(self.raster['affine'][-3] + self.raster['affine'][-1]*(self.raster['dims'][1] - j - 1))
+                lons.append(
+                    self.raster['affine'][1] * i + self.raster['affine'][0])
+                lats.append(
+                    self.raster['affine'][-3] + self.raster['affine'][-1] * (
+                            self.raster['dims'][1] - j - 1))
 
         self.lons = np.array(lons)
         self.lats = np.array(lats)
 
     def get_strain(self, state='plane_strain'):
         """
-        Reads a raw strain 2d data containing (exx, eyy, exy) and calculate strain tensor properties assuming plane strain
+        Reads a raw strain 2d data containing (exx, eyy, exy) and calculate
+        strain tensor properties assuming plane strain or stress
         Implemented:
         - J2
         - Areal strain
@@ -280,10 +139,11 @@ class GeodeticModel(object):
         - 2D strain state psi (eps_1 + eps_3)/(abs(eps_1) + abs(eps_3)
         """
 
-        if not all(x in ('exx', 'eyy', 'exy') for x in self.raster['attributes']):
-            self.data = {j: self.raster['data'][:, i] for i, j in enumerate(self.raster['attributes'])}
+        if not all(
+                x in ('exx', 'eyy', 'exy') for x in self.raster['attributes']):
+            self.data = {j: self.raster['data'][:, i] for i, j in
+                         enumerate(self.raster['attributes'])}
             return
-
 
         data = self.raster['data']
         mask = self.raster['mask']
@@ -302,12 +162,16 @@ class GeodeticModel(object):
                 nu = 0.25
                 if state == 'plane_stress':
 
-                    D = E / (1 - nu ** 2) * np.array([[1., nu, 0], [nu, 1., 0], [0, 0, (1. - nu) / 2.]])
+                    D = E / (1 - nu ** 2) * np.array(
+                        [[1., nu, 0], [nu, 1., 0], [0, 0, (1. - nu) / 2.]])
                     sigma_i_vec = np.dot(D, np.array([i[0], i[1], i[2]]))
-                    sigma_i = np.array([[sigma_i_vec[0], sigma_i_vec[2], 0], [sigma_i_vec[2], sigma_i_vec[1], 0], [0, 0, 0]])
+                    sigma_i = np.array([[sigma_i_vec[0], sigma_i_vec[2], 0],
+                                        [sigma_i_vec[2], sigma_i_vec[1], 0],
+                                        [0, 0, 0]])
                     val_sigma, vec_sigma = np.linalg.eig(sigma_i)
                     sigma_m = np.sum(val_sigma) / 3
-                    j2 = np.sqrt(3 * 0.5 * (np.sum([(i - sigma_m) ** 2 for i in val_sigma])))
+                    j2 = np.sqrt(3 * 0.5 * (
+                        np.sum([(i - sigma_m) ** 2 for i in val_sigma])))
                     J2.append(j2)
 
                     if val_sigma[0] < 0 and val_sigma[2] < 0:
@@ -320,12 +184,15 @@ class GeodeticModel(object):
                     Regime.append(regime)
                     sigma_m = (sigma_i_vec[0] + sigma_i_vec[1]) / 2.
                     Area.append(sigma_m)
-                    phi = (val_sigma[1] - val_sigma[2]) / (val_sigma[0] - val_sigma[2])
+                    phi = (val_sigma[1] - val_sigma[2]) / (
+                            val_sigma[0] - val_sigma[2])
                     tau_max = np.abs(val_sigma[0] - val_sigma[2]) / 2.
                     Tau_max.append(tau_max)
                     Phi.append(phi)
-                    Psi.append((val_sigma[0] + val_sigma[2]) / (np.abs(val_sigma[0]) + np.abs(val_sigma[2])))
-                    ss = np.max([np.abs(val_sigma[0]), np.abs(val_sigma[2]), np.abs(val_sigma[0] + val_sigma[2])])
+                    Psi.append((val_sigma[0] + val_sigma[2]) / (
+                            np.abs(val_sigma[0]) + np.abs(val_sigma[2])))
+                    ss = np.max([np.abs(val_sigma[0]), np.abs(val_sigma[2]),
+                                 np.abs(val_sigma[0] + val_sigma[2])])
                     SS.append(ss)
 
                 elif state == 'plane_strain':
@@ -344,15 +211,18 @@ class GeodeticModel(object):
 
                     val_2d = np.sort(np.array([val[0], val[1]]))
                     val_3d = np.sort(np.array([val[0], val[1], 0]))
-                    j2 = np.sqrt(3 * 0.5 * (np.sum([(i - sigma_m) ** 2 for i in val_3d])))
+                    j2 = np.sqrt(3 * 0.5 * (
+                        np.sum([(i - sigma_m) ** 2 for i in val_3d])))
                     J2.append(j2)
                     phi = (val_3d[1] - val_3d[2]) / (val_3d[0] - val_3d[2])
 
                     tau_max = np.abs(val_3d[0] - val_3d[2]) / 2.
                     Tau_max.append(tau_max)
                     Phi.append(phi)
-                    Psi.append((val_2d[0] + val_2d[1]) / (np.abs(val_2d[0]) + np.abs(val_2d[1])))
-                    ss = np.max([np.abs(val_2d[0]), np.abs(val_2d[1]), np.abs(val_2d[0] + val_2d[1])])
+                    Psi.append((val_2d[0] + val_2d[1]) / (
+                            np.abs(val_2d[0]) + np.abs(val_2d[1])))
+                    ss = np.max([np.abs(val_2d[0]), np.abs(val_2d[1]),
+                                 np.abs(val_2d[0] + val_2d[1])])
                     SS.append(ss)
 
             else:
@@ -364,7 +234,9 @@ class GeodeticModel(object):
                 Tau_max.append(np.nan)
                 SS.append(np.nan)
 
-        data_dict = {'eps': data, 'regime': np.array(Regime), 'eps_a': np.array(Area), 'phi': np.array(Phi), 'psi': np.array(Psi), 'j2': np.array(J2),
+        data_dict = {'eps': data, 'regime': np.array(Regime),
+                     'eps_a': np.array(Area), 'phi': np.array(Phi),
+                     'psi': np.array(Psi), 'j2': np.array(J2),
                      'tau_max': np.array(Tau_max), 'ss': np.array(SS)}
         self.data = data_dict
 
@@ -383,20 +255,24 @@ class GeodeticModel(object):
         return np.array([lower, upper])
 
     @staticmethod
-    def _get_bins(array, k=3, range_=None, method='eq_interval', n_disc=25, n_bins=100):
+    def _get_bins(array, k=3, range_=None, method='eq_interval', n_disc=25,
+                  n_bins=100):
         """
-        Returns binning by equal intervals, equal quantiles, max entropy or K-means
+        Returns binning by equal intervals, equal quantiles, max entropy or
+         K-means
 
         :param array: Data to be binned
         :param k: Number of intervals
-        :param range_: pre-established range within the binning is performed, for equal intervals
+        :param range_: pre-established range within the binning is performed,
+         for equal intervals
         :param method: 'eq_interal' or 'eq_quantile'
         :return: array_(k-1)  - Inner boundaries of the binning
         """
 
         bins = None
         if range_ is None:
-            range_ = [np.nanquantile(array, 0.025), np.nanquantile(array, 0.975)]
+            range_ = [np.nanquantile(array, 0.025),
+                      np.nanquantile(array, 0.975)]
 
         if method == 'eq_interval':
             bins = np.linspace(range_[0], range_[1], k + 1)[1:-1]
@@ -408,14 +284,18 @@ class GeodeticModel(object):
         elif method == 'eq_entropy':
 
             values = array[~np.isnan(array)]
-            cut_points = np.linspace(range_[0], range_[1], n_disc, endpoint=False)[1:]
-            discretizations = [np.hstack([range_[0], i, range_[1]]) for i in itertools.combinations(cut_points, k - 1)]
+            cut_points = np.linspace(range_[0], range_[1], n_disc,
+                                     endpoint=False)[1:]
+            discretizations = [np.hstack([range_[0], i, range_[1]]) for i in
+                               itertools.combinations(cut_points, k - 1)]
             print('max ent iterations %i' % len(discretizations))
             h = np.zeros((len(discretizations), k))
             n_i = np.zeros((len(discretizations), k))
             for i, intervals in enumerate(discretizations):
                 for j in range(len(intervals) - 1):
-                    element = values[np.where(np.logical_and(values >= intervals[j], values < intervals[j + 1]))]
+                    element = values[np.where(
+                        np.logical_and(values >= intervals[j],
+                                       values < intervals[j + 1]))]
                     n_i[i, j] = len(element)
                     h[i, j] = entropy(np.histogram(element, bins=n_bins)[0])
 
@@ -424,11 +304,11 @@ class GeodeticModel(object):
 
             bins = [i for i in discretizations[ind][1:-1]]
 
-
         elif method == 'kmeans':
 
             array = array[~np.isnan(array)].reshape((-1, 1))
-            est = KBinsDiscretizer(n_bins=k, encode='ordinal', strategy='kmeans')
+            est = KBinsDiscretizer(n_bins=k, encode='ordinal',
+                                   strategy='kmeans')
             est.fit(array)
             bins = est.bin_edges_[0][1:-1]
 
@@ -448,7 +328,8 @@ class GeodeticModel(object):
     @staticmethod
     def _categorized_product(cat_1, cat_2, bins_1, bins_2):
 
-        a, b = np.meshgrid(np.arange(len(bins_1) + 1), np.arange(len(bins_2) + 1))
+        a, b = np.meshgrid(np.arange(len(bins_1) + 1),
+                           np.arange(len(bins_2) + 1))
         ind = np.vstack((a.ravel(), b.ravel())).T.astype(float)
         product = []
         for i, j in zip(cat_1, cat_2):
@@ -468,19 +349,18 @@ class GeodeticModel(object):
 
         for measure in measures:
             print('Binning measure %s' % measure)
-
-            range_ = self._get_range(self.data[measure], 0.99)
+            self._get_range(self.data[measure], 0.99)
             self.bin_edges[measure] = []
             min_tree = []
-            for bin in bin_discr:
-
-                print('Processing bin %i' % bin)
+            for binx in bin_discr:
+                print('Processing bin %i' % binx)
                 bin_edges = self._get_bins(array=self.data[measure],
-                                           k=bin,
+                                           k=binx,
                                            method=method)
-                categorized_array = self._categorize_array(array=self.data[measure],
-                                                           mask=self.raster['mask'],
-                                                           bins=bin_edges)
+                categorized_array = self._categorize_array(
+                    array=self.data[measure],
+                    mask=self.raster['mask'],
+                    bins=bin_edges)
 
                 min_tree.append(categorized_array)
                 self.bin_edges[measure].append(bin_edges)
@@ -515,7 +395,8 @@ class GeodeticModel(object):
         images2 = []
         for mask in images:
             closed = binary_closing(mask, structure=np.ones((smooth, smooth)))
-            medi = median(skimage.img_as_ubyte(closed), disk(5), mask=1 - nanmask)
+            medi = median(skimage.img_as_ubyte(closed), disk(5),
+                          mask=1 - nanmask)
             new_img = remove_small_objects(medi.astype(bool), 900)
             new_img = remove_small_holes(new_img, 800)
             if len(np.unique(new_img)) != len(np.unique(closed)):
@@ -549,10 +430,12 @@ class GeodeticModel(object):
             measures = [measures]
         for measure in measures:
             for n_bin in range(len(self.bin_edges[measure])):
-                array = self.data[measure+'_disc'][:, n_bin]
+                array = self.data[measure + '_disc'][:, n_bin]
                 array_proc = self._image_processing(input_array=array,
-                                                    n_bins=int(np.nanmax(array)),
-                                                    array_mask=self.raster['mask'],
+                                                    n_bins=int(
+                                                        np.nanmax(array)),
+                                                    array_mask=self.raster[
+                                                        'mask'],
                                                     dims=self.raster['dims'],
                                                     smooth=smooth)
                 self.data[measure + '_disc'][:, n_bin] = array_proc
@@ -574,16 +457,19 @@ class GeodeticModel(object):
 
         for j in range(raster_new['dims'][1] - 1):
             for i in range(raster_new['dims'][0] - 1):
-                lons_new.append(raster_new['affine'][1] * i + raster_new['affine'][0])
-                lats_new.append(raster_new['affine'][-3] + raster_new['affine'][-1]*(raster_new['dims'][1] - j - 1))
+                lons_new.append(
+                    raster_new['affine'][1] * i + raster_new['affine'][0])
+                lats_new.append(
+                    raster_new['affine'][-3] + raster_new['affine'][-1] * (
+                            raster_new['dims'][1] - j - 1))
         coords = []
-        hash = []
+        hash_idx = []
         i = 0
 
         for x, y, m in zip(lons_new, lats_new, raster_new['mask']):
             if not m:
                 coords.append([x, y])
-                hash.append(i)
+                hash_idx.append(i)
             i += 1
         coords = np.array(coords)
         grid_old = np.vstack((self.lons[~self.raster['mask']],
@@ -598,7 +484,7 @@ class GeodeticModel(object):
 
             array_new = np.nan * np.ones((len(lons_new), array_old.shape[1]))
 
-            array_new[np.array(hash), :] = array
+            array_new[np.array(hash_idx), :] = array
             new_data[measure + '_disc'] = array_new
         new_data['grid'] = np.vstack((lons_new, lats_new)).T
         self.raster = raster_new
@@ -606,14 +492,14 @@ class GeodeticModel(object):
         self.lons = np.array(lons_new)
         self.data = new_data
 
-    def intersect_by_polygon(self, polygon, measure, bin):
+    def intersect_by_polygon(self, polygon, measure, binx):
 
         if isinstance(polygon, str):
             polygon = fiona.open(polygon)
         poly_coords = polygon[0]['geometry']['coordinates'][0]
         nz_poly = shpoly(shell=np.array(poly_coords))
 
-        polygons_0 = self.polygons[(measure, bin)]
+        polygons_0 = self.polygons[(measure, binx)]
         new_poly = []
         for i, pol in enumerate(polygons_0):
             coords_poly = pol[0]['coordinates']
@@ -622,7 +508,6 @@ class GeodeticModel(object):
             else:
                 shp_poly = shpoly(shell=coords_poly[0], holes=coords_poly[1:])
             intersection = nz_poly.intersection(shp_poly)
-            aux = copy.deepcopy(pol)
 
             if isinstance(intersection, shpoly):
                 aux = copy.deepcopy(pol)
@@ -632,7 +517,8 @@ class GeodeticModel(object):
                 if len(c[0]) == 0:
                     pass
                 else:
-                    aux[0]['coordinates'] = [[(i, j) for i,j in zip(c[0], c[1])]]
+                    aux[0]['coordinates'] = [
+                        [(i, j) for i, j in zip(c[0], c[1])]]
                     new_poly.append(aux)
             if isinstance(intersection, MultiPolygon):
                 aux = copy.deepcopy(pol)
@@ -643,24 +529,30 @@ class GeodeticModel(object):
                     if len(c[0]) == 0:
                         continue
                     interiors = p.interiors
-                    aux_p[0]['coordinates'] = [[(m, n) for m, n in zip(c[0], c[1])]]
+                    aux_p[0]['coordinates'] = [
+                        [(m, n) for m, n in zip(c[0], c[1])]]
                     if len(interiors) != 0:
                         for z in interiors:
-                            aux_p[0]['coordinates'].append([(m, n) for m, n in zip(z.xy[0], z.xy[1])])
+                            aux_p[0]['coordinates'].append(
+                                [(m, n) for m, n in zip(z.xy[0], z.xy[1])])
                     new_poly.append(aux_p)
 
-        self.polygons[(measure, bin)] = new_poly
+        self.polygons[(measure, binx)] = new_poly
 
-        shp_schema = {'geometry': 'MultiPolygon', 'properties': {'pixelvalue': 'float'}}
-        crs = rasterio.crs.CRS.from_epsg('4326')
+        shp_schema = {'geometry': 'MultiPolygon',
+                      'properties': {'pixelvalue': 'float'}}
 
         from shapely.geometry import shape, mapping, Point
-        with fiona.open('test.shp', 'w', 'ESRI Shapefile', shp_schema, 'epsg:4326') as shp:
-            for poly, value in [(shape(geom), value) for geom, value in new_poly]:
+        with fiona.open('test.shp', 'w', 'ESRI Shapefile', shp_schema,
+                        'epsg:4326') as shp:
+            for poly, value in [(shape(geom), value) for geom, value in
+                                new_poly]:
                 multipolygon = MultiPolygon([poly])
-                shp.write({'geometry': mapping(multipolygon), 'properties': {'pixelvalue': float(value)}})
+                shp.write({'geometry': mapping(multipolygon),
+                           'properties': {'pixelvalue': float(value)}})
 
         # run_folder(folder)
+
     def include_region(self, polygon, measures):
 
         if isinstance(measures, str):
@@ -695,20 +587,25 @@ class GeodeticModel(object):
                 bins = [len(i) for i in self.bin_edges[measure]]
                 bin_col = np.where(np.array(bins) == n_bin - 1)[0][0]
                 array = self.data[measure + '_disc'][:, bin_col]
-                filename = paths.get('spatial', 'shp', self.name + '_%s_%i' % (measure, n_bin))
+                filename = paths.get('spatial', 'shp',
+                                     self.name + '_%s_%i' % (measure, n_bin))
                 if load:
-                    shp_schema = {'geometry': 'MultiPolygon', 'properties': {'pixelvalue': 'float'}}
+                    shp_schema = {'geometry': 'MultiPolygon',
+                                  'properties': {'pixelvalue': 'float'}}
                     epsg = 'EPSG:4326'
                     crs = rasterio.crs.CRS.from_epsg(epsg.split(':')[-1])
                     polygons = []
-                    with fiona.open(filename, 'r', 'ESRI Shapefile', shp_schema, crs) as shp:
+                    with fiona.open(filename, 'r', 'ESRI Shapefile',
+                                    shp_schema, crs) as shp:
                         for poly in shp:
-                            polygons.append((poly['geometry'], poly['properties']['pixelvalue']))
+                            polygons.append((poly['geometry'],
+                                             poly['properties']['pixelvalue']))
 
                 else:
                     from nonpoisson import geo
 
-                    polygons = geo.polygonize_array(array, self.raster, savepath=filename)
+                    polygons = geo.polygonize_array(array, self.raster,
+                                                    savepath=filename)
                 self.polygons[(measure, n_bin)] = polygons
 
     def get_oqpolygons(self, measure, n_bins):
@@ -718,10 +615,12 @@ class GeodeticModel(object):
             shell_sphe = n_poly[0]['coordinates'][0]
             holes_sphe = n_poly[0]['coordinates'][1:]
             poly_value = n_poly[1]
-            proj = OrthographicProjection.from_lons_lats(np.array([i[0] for i in shell_sphe]),
-                                                         np.array([i[1] for i in shell_sphe]))
+            proj = OrthographicProjection.from_lons_lats(
+                np.array([i[0] for i in shell_sphe]),
+                np.array([i[1] for i in shell_sphe]))
             poly = shpoly(shell=np.array(proj(*np.array(shell_sphe).T)).T,
-                           holes=[np.array(proj(*np.array(i).T)).T for i in holes_sphe])
+                          holes=[np.array(proj(*np.array(i).T)).T for i in
+                                 holes_sphe])
             oqpolygons.append(oqpoly._from_2d(poly, proj))
             polygon_values.append(poly_value)
 
@@ -758,11 +657,11 @@ class GeodeticModel(object):
                                      borderaxespad=0.8)
 
         limits = np.array([range_[0], *bins, range_[1]])
-        midpoint_bins = [(limits[i] + limits[i + 1]) / 2 for i in range(len(limits) - 1)]
+        midpoint_bins = [(limits[i] + limits[i + 1]) / 2 for i in
+                         range(len(limits) - 1)]
         for i, m in enumerate(midpoint_bins):
-            plt.text(m, np.max(hist[0]), f'{i+1}', color='darkgreen',
+            plt.text(m, np.max(hist[0]), f'{i + 1}', color='darkgreen',
                      fontsize=16, va='bottom', ha='center')
-
 
         fig.get_axes()[0].set_xlabel(var, fontsize=28)
         fig.get_axes()[0].set_ylabel(ylabel, fontsize=28)
@@ -783,7 +682,8 @@ class GeodeticModel(object):
         if attributes is None:
             attributes = self.data.keys()
         else:
-            attributes = [i for i in self.data.keys() if any([j in i for j in attributes])]
+            attributes = [i for i in self.data.keys() if
+                          any([j in i for j in attributes])]
 
         if vtk_name is None:
             vtk_name = self.paths['vtk']
@@ -801,7 +701,8 @@ class GeodeticModel(object):
                     n += 1
                 struct[key] = indexes
 
-        n_atts = np.max(list(functools.reduce(lambda i, j: i + j, struct.values()))) + 1
+        n_atts = np.max(
+            list(functools.reduce(lambda i, j: i + j, struct.values()))) + 1
         data_resampled = np.zeros((self.raster['mask'].shape[0], n_atts))
         for key, item in struct.items():
             for i, it in enumerate(item):
@@ -844,5 +745,3 @@ class GeodeticModel(object):
         else:
             with open(self.paths['serial'], 'wb') as obj:
                 pickle.dump(self, obj)
-
-
