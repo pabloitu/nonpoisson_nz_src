@@ -92,6 +92,7 @@ results_path = {'catalogs': {'dir': join(results, 'catalogs'),
                             'shp': None,
                             'vtk': None,
                             'fig': None},
+                'forecast': {'dir': join(results, 'forecast')},
                 'hazard': {'dir': join(results, 'hazard')}}
 
 subfolders = ['fig', 'csv', 'raster', 'shp', 'serial', 'vtk']
@@ -120,6 +121,14 @@ def get(model, result_type, name=None, ext=None):
             return join(results_path[model][result_type], '%s' % name)
 
 
+def get_model(modeltype, *args):
+
+    model_dir = join(results, modeltype, args[0])
+
+    if len(args) == 1:
+        return model_dir
+    else:
+        return join(model_dir, *args[1:])
 def get_oq(name):
     oq_dir = join(results, 'hazard', 'oq')
     if isinstance(name, str):

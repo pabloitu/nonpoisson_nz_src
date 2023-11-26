@@ -16,7 +16,7 @@ import rasterio
 import rasterio.mask
 import subprocess
 import affine as affine_module
-from pyproj import Proj, transform
+from pyproj import Proj, transform, Transformer
 from osgeo import ogr, osr, gdal
 gdal.DontUseExceptions()
 
@@ -244,12 +244,18 @@ def rasterize_polygons(shp_fn, raster_fn, attributes,
 
 
 def reproject_coordinates(array, crs_0, crs_f):
-    inProj = Proj(init=crs_0)
-    outProj = Proj(init=crs_f)
-    x1, y1 = inProj(array[:, 0], array[:, 1])
-    x2, y2 = transform(inProj, outProj, x1, y1)
+    # inProj = Proj(init=crs_0)
+    # outProj = Proj(init=crs_f)
+    # x1, y1 = inProj(array[:, 0], array[:, 1])
+    # x2, y2 = transform(inProj, outProj, x1, y1)
+    #
+    # reprojected = np.vstack((x2, y2)).T
 
-    reprojected = np.vstack((x2, y2)).T
+    #
+    transformer = Transformer.from_crs(crs_0, crs_f, always_xy=True)
+    x, y = transformer.transform(array[:, 0], array[:, 1])
+    reprojected = np.vstack((x, y)).T
+
     return reprojected
 
 
@@ -853,8 +859,8 @@ def source_model2raster(array, datatype, storedir, filename, grid, res, srs='EPS
     return shp_fn, raster_fn
 
 
-def source_raster2vti(fname_vti, rasters, names,
-               offset=0, nodata_val=-9999):
+def source_raster2vti(fname_vti,
+                      rasters, names, offset=0, nodata_val=-9999):
     """
     Creates 2D vtkImage. All rasters must be in the same
     projection, extent and dimension.
@@ -871,19 +877,19 @@ def source_raster2vti(fname_vti, rasters, names,
     Last mod. 07/08/2020
     """
 
+
+    _, affine, dims, spacing, origin = parse_raster(rasters[0], offset)
+    image_data = vtkImageData()
+    image_data.SetDimensions(*dims)
+    image_data.SetOrigin(*origin)
+    image_data.SetSpacing(*spacing)
+
+
     for raster_path, name in zip(rasters, names):
+        raster, *_ = parse_raster(raster_path, offset)
 
-        raster = gdal.Open(raster_path)
         n_bands = raster.RasterCount
-        affine = raster.GetGeoTransform()
-
-        dims = (raster.RasterXSize + 1, raster.RasterYSize + 1, 1)
-        spacing = (affine[1], -affine[5], 0)
-        origin = (affine[0] + offset[0], affine[3] - spacing[1] * (dims[1] - 1) + offset[1], offset[2])
         mask = None
-        if raster_path == rasters[0]:
-            image = pyvista.UniformGrid(dims=dims, spacing=spacing, origin=origin)
-
         Array = []
         for i in range(n_bands):
             array = np.flipud(raster.GetRasterBand(i + 1). \
@@ -892,15 +898,52 @@ def source_raster2vti(fname_vti, rasters, names,
             Array.append(array)
             if i == 0:
                 mask = np.isnan(array)
-
             else:
                 mask += np.isnan(array)
         Array = np.ascontiguousarray(np.array(Array).T)
-        image.cell_data[name] = Array
-        if raster_path == rasters[0]:
-            image.cell_data["mask"] = 1 - mask * 1
-        image.save(fname_vti)
-    # return image
+        vtk_array = numpy_to_vtk(Array, deep=True,
+                                 array_type=vtk.VTK_FLOAT)
+        vtk_array.SetName(name)
+        image_data.GetCellData().AddArray(vtk_array)
+
+
+
+    vtk_mask = numpy_to_vtk(1 - mask.ravel() * 1, deep=True,
+                            array_type=vtk.VTK_INT)
+    vtk_mask.SetName('mask')
+    image_data.GetCellData().AddArray(vtk_mask)
+    write_vtk(fname_vti, image_data)
+    #
+    # for raster_path, name in zip(rasters, names):
+    #
+    #     raster = gdal.Open(raster_path)
+    #     n_bands = raster.RasterCount
+    #     affine = raster.GetGeoTransform()
+    #
+    #     dims = (raster.RasterXSize + 1, raster.RasterYSize + 1, 1)
+    #     spacing = (affine[1], -affine[5], 0)
+    #     origin = (affine[0] + offset[0], affine[3] - spacing[1] * (dims[1] - 1) + offset[1], offset[2])
+    #     mask = None
+    #     if raster_path == rasters[0]:
+    #         image = pyvista.UniformGrid(dims=dims, spacing=spacing, origin=origin)
+    #
+    #     Array = []
+    #     for i in range(n_bands):
+    #         array = np.flipud(raster.GetRasterBand(i + 1). \
+    #                           ReadAsArray()).flatten(order='C')
+    #         array[array == nodata_val] = np.nan
+    #         Array.append(array)
+    #         if i == 0:
+    #             mask = np.isnan(array)
+    #
+    #         else:
+    #             mask += np.isnan(array)
+    #     Array = np.ascontiguousarray(np.array(Array).T)
+    #     image.cell_data[name] = Array
+    #     if raster_path == rasters[0]:
+    #         image.cell_data["mask"] = 1 - mask * 1
+    #     image.save(fname_vti)
+    # # return image
 
 
 if __name__ == '__main__':

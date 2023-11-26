@@ -994,7 +994,6 @@ def make_joint_figure():
         axs[i].text(100, 250, letters[i], fontsize=16,
                     **{'fontname': 'Ubuntu'})
 
-    # plt.tight_layout()
     plt.savefig("strain_measures_bin.jpg", dpi=400, bbox_inches='tight')
     plt.savefig("fig13.jpg", dpi=1200, bbox_inches='tight')
     plt.show()

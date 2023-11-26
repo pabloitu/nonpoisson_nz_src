@@ -128,7 +128,7 @@ class GeodeticModel(object):
         self.lons = np.array(lons)
         self.lats = np.array(lats)
 
-    def get_strain(self, state='plane_strain'):
+    def get_strain(self):
         """
         Reads a raw strain 2d data containing (exx, eyy, exy) and calculate
         strain tensor properties assuming plane strain or stress
@@ -158,72 +158,34 @@ class GeodeticModel(object):
 
         for i, j in zip(data, mask):
             if not j:
-                E = 1
-                nu = 0.25
-                if state == 'plane_stress':
 
-                    D = E / (1 - nu ** 2) * np.array(
-                        [[1., nu, 0], [nu, 1., 0], [0, 0, (1. - nu) / 2.]])
-                    sigma_i_vec = np.dot(D, np.array([i[0], i[1], i[2]]))
-                    sigma_i = np.array([[sigma_i_vec[0], sigma_i_vec[2], 0],
-                                        [sigma_i_vec[2], sigma_i_vec[1], 0],
-                                        [0, 0, 0]])
-                    val_sigma, vec_sigma = np.linalg.eig(sigma_i)
-                    sigma_m = np.sum(val_sigma) / 3
-                    j2 = np.sqrt(3 * 0.5 * (
-                        np.sum([(i - sigma_m) ** 2 for i in val_sigma])))
-                    J2.append(j2)
+                eps_i = np.array([[i[0], i[2]], [i[2], i[1]]])
+                val, vec = np.linalg.eig(eps_i)
+                if val[0] < 0 and val[1] < 0:
+                    regime = -1
+                elif val[0] > 0 and val[1] > 0:
+                    regime = 1
+                else:
+                    regime = 0
+                Regime.append(regime)
+                sigma_m = (i[0] + i[1]) / 2.
+                Area.append(sigma_m)
 
-                    if val_sigma[0] < 0 and val_sigma[2] < 0:
-                        regime = -1
-                    elif val_sigma[0] > 0 and val_sigma[2] > 0:
-                        regime = 1
-                    else:
-                        regime = 0
+                val_2d = np.sort(np.array([val[0], val[1]]))
+                val_3d = np.sort(np.array([val[0], val[1], 0]))
+                j2 = np.sqrt(3 * 0.5 * (
+                    np.sum([(i - sigma_m) ** 2 for i in val_3d])))
+                J2.append(j2)
+                phi = (val_3d[1] - val_3d[2]) / (val_3d[0] - val_3d[2])
 
-                    Regime.append(regime)
-                    sigma_m = (sigma_i_vec[0] + sigma_i_vec[1]) / 2.
-                    Area.append(sigma_m)
-                    phi = (val_sigma[1] - val_sigma[2]) / (
-                            val_sigma[0] - val_sigma[2])
-                    tau_max = np.abs(val_sigma[0] - val_sigma[2]) / 2.
-                    Tau_max.append(tau_max)
-                    Phi.append(phi)
-                    Psi.append((val_sigma[0] + val_sigma[2]) / (
-                            np.abs(val_sigma[0]) + np.abs(val_sigma[2])))
-                    ss = np.max([np.abs(val_sigma[0]), np.abs(val_sigma[2]),
-                                 np.abs(val_sigma[0] + val_sigma[2])])
-                    SS.append(ss)
-
-                elif state == 'plane_strain':
-
-                    eps_i = np.array([[i[0], i[2]], [i[2], i[1]]])
-                    val, vec = np.linalg.eig(eps_i)
-                    if val[0] < 0 and val[1] < 0:
-                        regime = -1
-                    elif val[0] > 0 and val[1] > 0:
-                        regime = 1
-                    else:
-                        regime = 0
-                    Regime.append(regime)
-                    sigma_m = (i[0] + i[1]) / 2.
-                    Area.append(sigma_m)
-
-                    val_2d = np.sort(np.array([val[0], val[1]]))
-                    val_3d = np.sort(np.array([val[0], val[1], 0]))
-                    j2 = np.sqrt(3 * 0.5 * (
-                        np.sum([(i - sigma_m) ** 2 for i in val_3d])))
-                    J2.append(j2)
-                    phi = (val_3d[1] - val_3d[2]) / (val_3d[0] - val_3d[2])
-
-                    tau_max = np.abs(val_3d[0] - val_3d[2]) / 2.
-                    Tau_max.append(tau_max)
-                    Phi.append(phi)
-                    Psi.append((val_2d[0] + val_2d[1]) / (
-                            np.abs(val_2d[0]) + np.abs(val_2d[1])))
-                    ss = np.max([np.abs(val_2d[0]), np.abs(val_2d[1]),
-                                 np.abs(val_2d[0] + val_2d[1])])
-                    SS.append(ss)
+                tau_max = np.abs(val_3d[0] - val_3d[2]) / 2.
+                Tau_max.append(tau_max)
+                Phi.append(phi)
+                Psi.append((val_2d[0] + val_2d[1]) / (
+                        np.abs(val_2d[0]) + np.abs(val_2d[1])))
+                ss = np.max([np.abs(val_2d[0]), np.abs(val_2d[1]),
+                             np.abs(val_2d[0] + val_2d[1])])
+                SS.append(ss)
 
             else:
                 Regime.append(np.nan)
@@ -551,7 +513,6 @@ class GeodeticModel(object):
                 shp.write({'geometry': mapping(multipolygon),
                            'properties': {'pixelvalue': float(value)}})
 
-        # run_folder(folder)
 
     def include_region(self, polygon, measures):
 
@@ -578,17 +539,18 @@ class GeodeticModel(object):
 
         # self.data = new_data
 
-    def bins_polygonize(self, measures, n_bins, load=False):
+    def bins_polygonize(self, measures, n_bins, load=False, post_proc=True):
 
         if isinstance(measures, str):
             measures = [measures]
         for measure in measures:
             for n_bin in n_bins:
-                bins = [len(i) for i in self.bin_edges[measure]]
-                bin_col = np.where(np.array(bins) == n_bin - 1)[0][0]
-                array = self.data[measure + '_disc'][:, bin_col]
+                if post_proc:
+                    prefix = 'post_proc/'
+                else:
+                    prefix = ''
                 filename = paths.get('spatial', 'shp',
-                                     self.name + '_%s_%i' % (measure, n_bin))
+                                     f'{prefix}{self.name}' + '_%s_%i' % (measure, n_bin))
                 if load:
                     shp_schema = {'geometry': 'MultiPolygon',
                                   'properties': {'pixelvalue': 'float'}}
@@ -603,6 +565,9 @@ class GeodeticModel(object):
 
                 else:
                     from nonpoisson import geo
+                    bins = [len(i) for i in self.bin_edges[measure]]
+                    bin_col = np.where(np.array(bins) == n_bin - 1)[0][0]
+                    array = self.data[measure + '_disc'][:, bin_col]
 
                     polygons = geo.polygonize_array(array, self.raster,
                                                     savepath=filename)

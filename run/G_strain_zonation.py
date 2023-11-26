@@ -45,7 +45,6 @@ def make_zonation():
     model.image_proc(metrics, smooth=10)
     # Create strain-rate bins as URZ polygons
     model.bins_polygonize(metrics, bin_numbers)
-    model.save()
 
     # Plot strain histogram binning (for Figure 12)
     for b, number in enumerate(bin_numbers):

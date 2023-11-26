@@ -373,6 +373,9 @@ class CatalogAnalysis(object):
         return filename
 
 
+
+
+
 class Model(object):   #todo models are replacing themselves due to class inheritance
 
     def __init__(self, name, params_global={}, params_local={}):
@@ -411,6 +414,14 @@ class Model(object):   #todo models are replacing themselves due to class inheri
             with open(filename, 'wb') as obj:
                 pickle.dump(self, obj)
         return filename
+
+
+class Poisson(Model):
+
+    def __init__(self, name=None):
+
+        self.params_local = {i: i for i in np.arange(1, 2000, 1)}
+        super().__init__(name if name else 'Poisson')
 
 
 class forwardPoisson(Model):
@@ -1127,10 +1138,10 @@ def create_models(cat):
 
 
 if __name__ == '__main__':
-
-    cat = catalogs.get_cat_nz()
-    cat = catalogs.filter_cat(cat, mws=(4.0, 10.0), start_time=dt(1960, 1, 1), shapefile=paths.region_nz_collection)
-    a = create_models(cat)
+    pass
+    # cat = catalogs.get_cat_nz()
+    # cat = catalogs.filter_cat(cat, mws=(4.0, 10.0), start_time=dt(1960, 1, 1), shapefile=paths.region_nz_collection)
+    # a = create_models(cat)
 
 
 
