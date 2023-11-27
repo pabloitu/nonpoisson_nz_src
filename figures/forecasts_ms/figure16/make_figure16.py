@@ -1731,7 +1731,7 @@ def make_joint_figure():
                     **{'fontname': 'Ubuntu'})
 
     plt.savefig("forecasts_fe.jpg", dpi=400, bbox_inches='tight')
-    # plt.savefig("fig16.jpg", dpi=1200, bbox_inches='tight')
+    plt.savefig("fig16.jpg", dpi=1200, bbox_inches='tight')
     plt.show()
 
 
