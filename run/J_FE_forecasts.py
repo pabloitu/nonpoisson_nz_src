@@ -9,8 +9,10 @@ from nonpoisson import catalogs
 
 import numpy as np
 from datetime import datetime as dt
-
-
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+from matplotlib.ticker import FormatStrFormatter
+from os.path import join
 def make_models_FE(N, years, bval, folder='', vti=False,
                         write_forecast=True):
 
@@ -23,6 +25,7 @@ def make_models_FE(N, years, bval, folder='', vti=False,
     os.makedirs(fig14_path, exist_ok=True)
 
     poisson = Poisson()
+    negbinom = NegBinom.load('negbinom_nz')
     spatial = GeodeticModel.load('hw_final')
     spatial.bins_polygonize([metric], [bins], load=True, post_proc=True)
     # spatial.intersect_by_polygon(paths.region_nz_buff, 'j2', 3)
@@ -50,6 +53,15 @@ def make_models_FE(N, years, bval, folder='', vti=False,
     pua.set_mfd(bval)
     pua.normalize(N * years)
 
+    npua = forecastModel(f'npua', folder=folder, mkdirs=True)
+    npua.get_geometry()
+    npua.set_rate_from_models(negbinom, spatial, catalog, measure=metric,
+                              nbins=bins, target_mmin=5.0)
+    npua.gr_scale(bval, 1.2, get_tvzpolygon(spatial, metric, bins))
+    npua.set_mfd(bval)
+    npua.normalize(N * years)
+
+
     fe = forecastModel.floor_2models(f'fe', hybrid, pua, bin=None,
                                          floor_type='count', folder=folder)
     fe.set_mfd(bval)
@@ -61,6 +73,11 @@ def make_models_FE(N, years, bval, folder='', vti=False,
     fe_low.set_mfd(bval)
     fe_low.normalize(N*years)
 
+    npfe_low = forecastModel.floor_2models(f'npfe', hybrid, npua, bin=0,
+                                       floor_type='count', folder=folder)
+    npfe_low.fill_towards(8)
+    npfe_low.set_mfd(bval)
+    npfe_low.normalize(N*years)
 
     fig_path = paths.ms1_figs['fig16']
     os.makedirs(os.path.join(fig_path, 'paraview'), exist_ok=True)
@@ -70,24 +87,82 @@ def make_models_FE(N, years, bval, folder='', vti=False,
         pua.write_forecast()
         fe.write_forecast()
         fe_low.write_forecast()
+        npfe_low.write_forecast()
+
 
     if vti:
         hybrid.normalize()
         pua.normalize()
         fe.normalize()
         fe_low.normalize()
-        hybrid.write_vti(path=os.path.join(fig_path, 'paraview', f'hybrid.vti'),
-                         res=res, epsg=crs, crop=True, res_method='nearest')
-        pua.write_vti(path=os.path.join(fig_path, 'paraview', f'pua.vti'),
-                      res=res, epsg=crs, crop=True, res_method='nearest')
-        fe.write_vti(path=os.path.join(fig_path, 'paraview', f'fe.vti'),
-                     res=res, epsg=crs, crop=True, res_method='nearest')
-        fe_low.write_vti(path=os.path.join(fig_path, 'paraview', f'fe_low.vti'),
-                         res=res, epsg=crs, crop=True, res_method='nearest')
+        npfe_low.normalize()
+        # hybrid.write_vti(path=os.path.join(fig_path, 'paraview', f'hybrid.vti'),
+        #                  res=res, epsg=crs, crop=True, res_method='nearest')
+        # pua.write_vti(path=os.path.join(fig_path, 'paraview', f'pua.vti'),
+        #               res=res, epsg=crs, crop=True, res_method='nearest')
+        # fe.write_vti(path=os.path.join(fig_path, 'paraview', f'fe.vti'),
+        #              res=res, epsg=crs, crop=True, res_method='nearest')
+        # fe_low.write_vti(path=os.path.join(fig_path, 'paraview', f'fe_low.vti'),
+        #                  res=res, epsg=crs, crop=True, res_method='nearest')
+        npfe_low.write_vti(path=os.path.join(fig_path, 'paraview', f'npfe_low.vti'),
+                           res=res, epsg=crs, crop=True, res_method='nearest')
+        hybrid.normalize(N*years)
+        pua.normalize(N*years)
+        fe.normalize(N*years)
+        fe_low.normalize(N*years)
+        npfe_low.normalize(N*years)
+
+    return hybrid, pua, fe, fe_low, npfe_low
+
+
+def plot_rate_cities(p, h, f):
+    N = 4.6
+    years = 50
+    i = 0
+    cities = ['Auckland', 'Tauranga', 'Gisborne', 'Napier', 'Wellington', 'Christchurch', 'Queenstown', 'Dunedin', 'Invercargill']
+    fig, ax = plt.subplots(1, 1, figsize=(8,5))
+
+    for city in cities:
+        print(city, f.get_rate(city)/N/years)
+        ax.semilogy([3*i], [h.get_rate(city)/N/years], 'o', color='steelblue')
+        ax.semilogy([3*i + 1], [f.get_rate(city)/N/years], 'o', color='purple')
+        ax.semilogy([3 * i + 2], [p.get_rate(city)/N/years], 'o', color='red')
+
+        i+=1
+    a = []
+    for i in cities:
+        a.extend([None, i, None])
+    ax.set_xticks(np.arange(0, 3*len(cities)))
+    ax.set_xticklabels(a, rotation=45)
+    xTickPos = ax.get_xticks()
+    xTickPos = xTickPos[:-1]
+    ax.bar(xTickPos[::3] + 1, 2000 * np.array([45] * len(xTickPos[::3])),
+           bottom=-1000, width=3 * (xTickPos[1] - xTickPos[0]), color=['w', 'gray'], alpha=0.3)
+    ax.set_ylim([1e-6, 1e-3])
+    ax.set_xlim([-0.5, 3*len(cities) - 0.5])
+    ax.grid(axis='y', which='major', linewidth=3)
+    ax.grid(axis='y', which='minor')
+
+    ax.tick_params(which='major', axis='x', length=0, color='gray')
+    ax.tick_params(which='major', axis='y', length=10, color='gray')
+    ax.tick_params(which='minor', axis='y', length=5, color='gray')
+    # ax.yaxis.set_minor_formatter(FormatStrFormatter("%.1f"))
+    ax.set_ylabel(r'Normalized mean rates $\mu/N_{tot}$ of events $m\geq 4.95$')
+
+    legend_elements = [Line2D([0], [0], color='steelblue', lw=0, marker='o', label=r'Hybrid Multiplicative'),
+                       Line2D([0], [0], color='red', lw=0, marker='o', label=r'Poisson Uniform Area (PUA)'),
+                       Line2D([0], [0], color='purple', lw=0, marker='o', label=r'Floor Ensemble (FE)')]
+
+    ax.legend(handles=legend_elements, loc='lower right')
+    fig.tight_layout()
+    plt.savefig(join(paths.ms1_figs['fig17'], 'forecast_values.png'), dpi=300, facecolor=(0,0,0,0))
+    plt.show()
 
 
 
 if __name__ == '__main__':
 
-    make_models_FE(5, 50, 0.925,
-                   vti=True, write_forecast=True)
+    hybrid, pua, fe, fe_low, npfe_low = make_models_FE(5, 50, 0.925,
+                              vti=True, write_forecast=True)
+
+    # plot_rate_cities(pua, hybrid, fe)
