@@ -51,14 +51,6 @@ from multiprocessing import Pool
 from csep.core.regions import geographical_area_from_bounds
 import seaborn
 import copy
-seaborn.set_style("darkgrid", {"axes.facecolor": ".9", 'font.family': 'Ubuntu'})
-# seaborn.set(rc={"xtick.bottom": True, "ytick.left" : True,
-#                 "xtick.color": 'darkgrey', 'xtick.labelcolor': 'black',
-#                 "ytick.color": 'darkgrey', 'ytick.labelcolor': 'black'})
-seaborn.set(rc={"xtick.bottom": True, "ytick.left" : True,
-                "xtick.color": 'darkgrey',
-                "ytick.color": 'darkgrey'})
-
 
 
 def get_tvzpolygon(spatial=False, metric='j2', bin=3):
@@ -1080,9 +1072,6 @@ class forecastModel(object):
             t_mmin = self.params_primary[point]['mmin']
             lmmin = self.params_primary[point]['lmmin']
             rate_learning = self.params_primary[point]['rate_learning']
-            if rate_learning == 0 or rate_learning is None:
-                print('BBBB', point, rate_learning)
-
             aval = np.log10(rate_learning) + bval * lmmin
             rate_target = 10 ** (aval - bval * t_mmin)
 
@@ -1311,7 +1300,7 @@ class forecastModel(object):
 
         return model
 
-    def fill_towards(self, nbin, method='count', alpha=5.0, plot=False):
+    def fill_towards(self, nbin, method='count', alpha=5.0):
 
         if method == 'count':
             if np.argwhere(np.all(np.isclose(self.grid_source, paths.Dunedin), axis=1)).shape[0]:
@@ -1336,7 +1325,7 @@ class forecastModel(object):
             points_base = np.array([self.grid_source[p, :]
                                     for p in range(self.nsources) if self.params_primary[p]['params'][0] >= cutoff_val])
 
-            import alphashape, shapely
+
             alpha_shape = alphashape.alphashape([(i[0], i[1]) for i in np.vstack((points, points_base))], alpha)
             mesh = shapely.geometry.MultiPoint(self.grid_source)
             points_polygon = np.array([[i.x, i.y] for i in alpha_shape.intersection(mesh).geoms])
@@ -1360,13 +1349,6 @@ class forecastModel(object):
                         self.params_primary[p]['params'] = [cutoff_val, alpha_param]
                         self.params_primary[p]['model'] = model
                         self.params_primary[p]['rate'] = rate_training
-            if plot:
-                fig, ax = plt.subplots()
-                from descartes import PolygonPatch
-                ax.plot(points[:, 0], points[:, 1], 'r.' )
-                ax.plot(points_base[:, 0], points_base[:, 1], 'b.' )
-                ax.add_patch(PolygonPatch(alpha_shape, alpha=0.6))
-                plt.show()
 
         elif method == 'bin':
             if np.argwhere(np.all(np.isclose(self.grid_source, paths.Dunedin), axis=1)).shape[0]:
@@ -1386,7 +1368,7 @@ class forecastModel(object):
                 cutoff_val = 1.02 * rate_target
                 points_base = np.array([self.grid_source[p, :]
                                         for p in range(self.nsources) if self.params_primary[p]['rates_bin'][i] >= cutoff_val])
-                import alphashape, shapely
+
                 alpha_shape = alphashape.alphashape([(k[0], k[1]) for k in np.vstack((points, points_base))], alpha)
                 mesh = shapely.geometry.MultiPoint(self.grid_source)
                 points_polygon = np.array([[k.x, k.y] for k in alpha_shape.intersection(mesh).geoms])
@@ -1409,13 +1391,6 @@ class forecastModel(object):
                             self.params_primary[p]['params'][1] = alpha_param
                             self.params_primary[p]['model'] = model
                             self.params_primary[p]['rates_bin'][i] = cutoff_val
-                if plot:
-                    fig, ax = plt.subplots()
-                    from descartes import PolygonPatch
-                    ax.plot(points[:, 0], points[:, 1], 'r.' )
-                    ax.plot(points_base[:, 0], points_base[:, 1], 'b.' )
-                    ax.add_patch(PolygonPatch(alpha_shape, alpha=0.6))
-                    plt.show()
 
     def write_forecast(self, format='spatial', mmin=4.95):
 

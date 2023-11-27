@@ -30,8 +30,7 @@ import rasterio.features
 import rasterio.merge
 import rasterio.crs
 import pandas
-
-sns.set_style("darkgrid", {"axes.facecolor": ".9", 'font.family': 'Ubuntu'})
+from nonpoisson import geo
 
 
 def extrapolate_nans(x, y, v, method='nearest'):
@@ -539,19 +538,20 @@ class GeodeticModel(object):
 
         # self.data = new_data
 
-    def bins_polygonize(self, measures, n_bins, load=False, post_proc=True):
+    def bins_polygonize(self, measures, n_bins, load=False, post_proc=False):
 
         if isinstance(measures, str):
             measures = [measures]
         for measure in measures:
             for n_bin in n_bins:
-                if post_proc:
-                    prefix = 'post_proc/'
-                else:
-                    prefix = ''
-                filename = paths.get('spatial', 'shp',
-                                     f'{prefix}{self.name}' + '_%s_%i' % (measure, n_bin))
+
                 if load:
+                    if post_proc:
+                        prefix = 'post_proc/'
+                    else:
+                        prefix = ''
+                    filename = paths.get('spatial', 'shp',
+                                         f'{prefix}{self.name}' + '_%s_%i' % (measure, n_bin))
                     shp_schema = {'geometry': 'MultiPolygon',
                                   'properties': {'pixelvalue': 'float'}}
                     epsg = 'EPSG:4326'
@@ -564,7 +564,9 @@ class GeodeticModel(object):
                                              poly['properties']['pixelvalue']))
 
                 else:
-                    from nonpoisson import geo
+                    filename = paths.get('spatial', 'shp',
+                                         f'{self.name}' + '_%s_%i' % (measure, n_bin))
+
                     bins = [len(i) for i in self.bin_edges[measure]]
                     bin_col = np.where(np.array(bins) == n_bin - 1)[0][0]
                     array = self.data[measure + '_disc'][:, bin_col]

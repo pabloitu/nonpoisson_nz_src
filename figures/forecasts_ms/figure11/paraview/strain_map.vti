@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <VTKFile type="ImageData" version="0.1" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
-  <ImageData WholeExtent="0 1335 0 1474 0 0" Origin="864715.0607010864 4707402.662813947 0" Spacing="1000 1000 0" Direction="1 0 0 0 1 0 0 0 1">
+  <ImageData WholeExtent="0 1335 0 1474 0 0" Origin="864715.0607010867 4707402.662813947 0" Spacing="1000 1000 0" Direction="1 0 0 0 1 0 0 0 1">
     <Piece Extent="0 1335 0 1474 0 0"                                                 >
       <PointData>
       </PointData>

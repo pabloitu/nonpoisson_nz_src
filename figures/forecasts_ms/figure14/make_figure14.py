@@ -1,6 +1,9 @@
 # state file generated using paraview version 5.11.1
 import paraview
-
+import numpy as np
+import matplotlib.pyplot as plt
+from nonpoisson.geo import reproject_coordinates
+from nonpoisson import paths
 paraview.compatibility.major = 5
 paraview.compatibility.minor = 11
 
@@ -9,14 +12,13 @@ from paraview.simple import *
 
 #### disable automatic camera reset on 'Show'
 paraview.simple._DisableFirstRenderCameraReset()
-import matplotlib.pyplot as plt
 
 
 def makefig_m(size_factor=1):
+
     # get the material library
     materialLibrary1 = GetMaterialLibrary()
 
-    # Create a new 'Render View'
     renderView1 = CreateView('RenderView')
     renderView1.ViewSize = [558, 786]
     renderView1.InteractionMode = '2D'
@@ -37,11 +39,9 @@ def makefig_m(size_factor=1):
     # setup view layouts
     # ----------------------------------------------------------------
 
-    # create new layout object 'Layout #1'
     layout1 = CreateLayout(name='Layout #1')
     layout1.AssignView(0, renderView1)
     layout1.SetSize(558, 786)
-
     # ----------------------------------------------------------------
     # restore active view
     SetActiveView(renderView1)
@@ -50,6 +50,7 @@ def makefig_m(size_factor=1):
     # ----------------------------------------------------------------
     # setup the data processing pipelines
     # ----------------------------------------------------------------
+
 
     # create a new 'XML Image Data Reader'
     pua_4vti = XMLImageDataReader(
@@ -169,6 +170,7 @@ def makefig_m(size_factor=1):
     coastlinevtmDisplay.SelectNormalArray = 'None'
     coastlinevtmDisplay.SelectTangentArray = 'None'
     coastlinevtmDisplay.LineWidth = size_factor
+    coastlinevtmDisplay.Position = [0.0, 0.0, 200.0]
     coastlinevtmDisplay.OSPRayScaleFunction = 'PiecewiseFunction'
     coastlinevtmDisplay.SelectOrientationVectors = 'None'
     coastlinevtmDisplay.ScaleFactor = 144610.3415327726
@@ -185,6 +187,9 @@ def makefig_m(size_factor=1):
     coastlinevtmDisplay.SelectInputVectors = [None, '']
     coastlinevtmDisplay.WriteLog = ''
 
+    # init the 'PolarAxesRepresentation' selected for 'PolarAxes'
+    coastlinevtmDisplay.PolarAxes.Translation = [0.0, 0.0, 200.0]
+
     # show data from regionvtm
     regionvtmDisplay = Show(regionvtm, renderView1, 'GeometryRepresentation')
 
@@ -197,6 +202,7 @@ def makefig_m(size_factor=1):
     regionvtmDisplay.SelectNormalArray = 'None'
     regionvtmDisplay.SelectTangentArray = 'None'
     regionvtmDisplay.LineWidth = size_factor
+    regionvtmDisplay.Position = [0.0, 0.0, 200.0]
     regionvtmDisplay.OSPRayScaleFunction = 'PiecewiseFunction'
     regionvtmDisplay.SelectOrientationVectors = 'None'
     regionvtmDisplay.ScaleFactor = 153998.45800642233
@@ -212,6 +218,9 @@ def makefig_m(size_factor=1):
     regionvtmDisplay.PolarAxes = 'PolarAxesRepresentation'
     regionvtmDisplay.SelectInputVectors = [None, '']
     regionvtmDisplay.WriteLog = ''
+
+    # init the 'PolarAxesRepresentation' selected for 'PolarAxes'
+    regionvtmDisplay.PolarAxes.Translation = [0.0, 0.0, 200.0]
 
     # show data from hybridvti
     hybridvtiDisplay = Show(hybridvti, renderView1, 'UniformGridRepresentation')
@@ -277,7 +286,7 @@ def makefig_m(size_factor=1):
     # get color legend/bar for rateLUT in view renderView1
     rateLUTColorBar = GetScalarBar(rateLUT, renderView1)
     rateLUTColorBar.WindowLocation = 'Any Location'
-    rateLUTColorBar.Position = [0.08282111399957778, 0.5012722646310435]
+    rateLUTColorBar.Position = [0.7863298859294023, 0.04961832061068722]
     rateLUTColorBar.Title = '$\\frac{\\mu}{N_{tot}}$'
     rateLUTColorBar.ComponentTitle = ''
     rateLUTColorBar.HorizontalTitle = 1
@@ -285,7 +294,7 @@ def makefig_m(size_factor=1):
     rateLUTColorBar.TitleFontSize = 40
     rateLUTColorBar.LabelColor = [0.0, 0.0, 0.0]
     rateLUTColorBar.LabelFontSize = 20
-    rateLUTColorBar.ScalarBarLength = 0.32999999999999996
+    rateLUTColorBar.ScalarBarLength = 0.3299999999999999
     rateLUTColorBar.AutomaticLabelFormat = 0
     rateLUTColorBar.LabelFormat = '%.0e'
     rateLUTColorBar.RangeLabelFormat = '%.0e'
@@ -303,7 +312,7 @@ def makefig_m(size_factor=1):
 
     # ----------------------------------------------------------------
     # restore active source
-    SetActiveSource(hybridvti)
+    SetActiveSource(regionvtm)
     # ----------------------------------------------------------------
 
     SaveExtracts(ExtractsOutputDirectory='extracts')
@@ -1220,21 +1229,43 @@ def makefig_p5(size_factor=1):
 def make_joint_figure():
 
     binmaps = [plt.imread(f"figure_{i}.png") for i in ['m', 'p3', 'p4', 'p5']]
-    titles = ['Hybrid \n Multiplicative',
-              'Poisson URZ \n $J_2$ 3-bins',
-              'Poisson URZ \n $J_2$ 4-bins',
-              'Poisson URZ \n $J_2$ 5-bins']
+    texts = ['a) Hybrid \nMultiplicative',
+             'b) Poisson URZ \n $J_2$ 3-bins',
+             'c) Poisson URZ \n $J_2$ 4-bins',
+             'd) Poisson URZ \n $J_2$ 5-bins']
     fig, axs = plt.subplots(1, 4,
                             figsize=(12, 5),
-                            gridspec_kw={'wspace': -0.0},
+                            gridspec_kw={'wspace': -0.001},
                             constrained_layout=False)
 
+    cities = {'Wellington': [1781, 2035],
+              'Auckland': [1813, 821],
+              'Tauranga': [2125, 1066],
+              'Gisborne': [2486, 1356],
+              'Napier': [2259, 1603],
+              'Christchurch': [1355, 2685],
+              'Queenstown': [593, 3115],
+              'Dunedin': [947, 3300],
+              'Invercargill': [530, 3545]}
+    # cities_2193 = reproject_coordinates(cities.squeeze(), 'EPSG:4326', 'EPSG:2193')
+
+    # print(cities_2193)
     for i, j in enumerate(binmaps):
+        if i == 0:
+            for x, city in cities.items():
+                axs[i].scatter(city[0], city[1], edgecolor='black',
+                               color='white', s=20)
+                axs[i].text(city[0] + 20, city[1] - 40, x, fontsize=8,
+                            horizontalalignment='center',
+                            verticalalignment='bottom',
+                            **{'fontname': 'Ubuntu'})
+            # axs[i].scatter(cities[:, 0], cities[:, 1], c='k', s=10)
+
         axs[i].imshow(j)
         axs[i].get_xaxis().set_visible(False)
         axs[i].get_yaxis().set_visible(False)
-        axs[i].set_title(titles[i], loc='left', fontsize=16,
-                         **{'fontname': 'Ubuntu'})
+        axs[i].text(100, 100, texts[i], fontsize=10, verticalalignment='top',
+                    **{'fontname': 'Ubuntu'})
 
     plt.savefig("forecasts_pua.jpg", dpi=400, bbox_inches='tight')
     plt.savefig("fig14.jpg", dpi=1200, bbox_inches='tight')
@@ -1242,8 +1273,8 @@ def make_joint_figure():
 
 
 if __name__ == '__main__':
-    makefig_m(5)
-    makefig_p3(5)
-    makefig_p4(5)
-    makefig_p5(5)
+    # makefig_m(5)
+    # makefig_p3(5)
+    # makefig_p4(5)
+    # makefig_p5(5)
     make_joint_figure()

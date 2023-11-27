@@ -1,3 +1,4 @@
+import os
 from os import makedirs
 from os.path import join, dirname, realpath
 import glob
@@ -46,6 +47,7 @@ csep_testing = join(regions, 'new_zealand/csep_testing.csv')
 points = join(gpsmodels, 'points.csv')
 gps_source = join(gpsmodels, 'source')
 gps_processed = join(gpsmodels, 'processed')
+makedirs(gps_processed, exist_ok=True)
 gps_hw_final = join(gps_source, 'VDoHS_solution_corr_sill.csv')
 
 # Processed gnss models

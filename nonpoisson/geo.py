@@ -244,14 +244,7 @@ def rasterize_polygons(shp_fn, raster_fn, attributes,
 
 
 def reproject_coordinates(array, crs_0, crs_f):
-    # inProj = Proj(init=crs_0)
-    # outProj = Proj(init=crs_f)
-    # x1, y1 = inProj(array[:, 0], array[:, 1])
-    # x2, y2 = transform(inProj, outProj, x1, y1)
-    #
-    # reprojected = np.vstack((x2, y2)).T
 
-    #
     transformer = Transformer.from_crs(crs_0, crs_f, always_xy=True)
     x, y = transformer.transform(array[:, 0], array[:, 1])
     reprojected = np.vstack((x, y)).T

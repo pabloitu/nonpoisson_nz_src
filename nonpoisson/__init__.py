@@ -7,3 +7,4 @@ from nonpoisson import catalogs
 from nonpoisson import zonation
 from nonpoisson import temporal
 from nonpoisson import geo
+from nonpoisson import forecast
