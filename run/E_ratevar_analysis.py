@@ -240,8 +240,8 @@ def fig_ratevar(figpath, nsims=1000):
 
 if __name__ == '__main__':
 
-    # fig_sampling(join(paths.ms1_figs['fig7'], 'cat_variability_poisson.png'))
-    # rate_var_regions()
-    # rate_var_etas()
+    fig_sampling(join(paths.ms1_figs['fig7'], 'cat_variability_poisson.png'))
+    rate_var_regions()
+    rate_var_etas()
     ms_figpath = join(paths.ms1_figs['fig8'], f'rate_variability.png')
     fig_ratevar(ms_figpath, nsims=ETAS_NSIMS)

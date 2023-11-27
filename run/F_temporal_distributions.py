@@ -14,7 +14,7 @@ from datetime import datetime as dt
 from os.path import join
 sns.set_style("darkgrid", {"axes.facecolor": ".9", 'font.family': 'Ubuntu'})
 
-N_MAX = 300
+N_MAX = 400
 N_ITER = 2000
 SEED = 23
 RATE_VAR_PARAMS = {'n_disc': np.arange(1, N_MAX),
