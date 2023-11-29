@@ -555,20 +555,20 @@ def rasters2vti(fname_vti, rasters, names,
     Last mod. 07/08/2020
     """
 
+
+    _, affine, dims, spacing, origin = parse_raster(rasters[0], offset)
+    image_data = vtkImageData()
+    image_data.SetDimensions(*dims)
+    image_data.SetOrigin(*origin)
+    image_data.SetSpacing(*spacing)
+
+
+
+
     for raster_path, name in zip(rasters, names):
-        raster = gdal.Open(raster_path)
+        raster, *_ = parse_raster(raster_path, offset)
         n_bands = raster.RasterCount
-        affine = raster.GetGeoTransform()
-
-        dims = (raster.RasterXSize + 1, raster.RasterYSize + 1, 1)
-        spacing = (affine[1], -affine[5], 0)
-        origin = (affine[0], affine[3] - spacing[1] * dims[1], offset)
         mask = None
-
-
-        if raster_path == rasters[0]:
-            image = pyvista.UniformGrid(dims=dims, spacing=spacing, origin=origin)
-
         Array = []
         for i in range(n_bands):
             array = np.flipud(raster.GetRasterBand(i + 1). \
@@ -581,10 +581,18 @@ def rasters2vti(fname_vti, rasters, names,
             else:
                 mask += np.isnan(array)
         Array = np.ascontiguousarray(np.array(Array).T)
-        image.cell_data[name] = Array
-        if raster_path == rasters[0]:
-            image.cell_data["mask"] = 1 - mask * 1
-        image.save(fname_vti)
+        vtk_array = numpy_to_vtk(Array, deep=True,
+                                 array_type=vtk.VTK_FLOAT)
+        vtk_array.SetName(name)
+        image_data.GetCellData().AddArray(vtk_array)
+    vtk_mask = numpy_to_vtk(1 - mask.ravel() * 1, deep=True,
+                            array_type=vtk.VTK_INT)
+    vtk_mask.SetName('mask')
+    image_data.GetCellData().AddArray(vtk_mask)
+    write_vtk(fname_vti, image_data)
+
+
+
 
 
 def raster2vti(fname_vti, raster, data_struct,

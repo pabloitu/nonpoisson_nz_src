@@ -131,6 +131,7 @@ def get_model(modeltype, *args):
         return model_dir
     else:
         return join(model_dir, *args[1:])
+
 def get_oq(name):
     oq_dir = join(results, 'hazard', 'oq')
     if isinstance(name, str):

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<nrml
+xmlns="http://openquake.org/xmlns/nrml/0.5"
+xmlns:gml="http://www.opengis.net/gml"
+>
+    <logicTree
+    logicTreeID="NZ_GMPE"
+    >
+        <logicTreeBranchingLevel
+        branchingLevelID="NZ_GMPE_BL"
+        >
+            <logicTreeBranchSet
+            branchSetID="NZ_GMPE_BS"
+            applyToTectonicRegionType="Active Shallow Crust"
+            uncertaintyType="gmpeModel"
+            >
+                <logicTreeBranch
+                branchID="AbrahamsonEtAl2014"
+                >
+                    <uncertaintyModel>
+                        AbrahamsonEtAl2014
+                    </uncertaintyModel>
+                    <uncertaintyWeight>
+                        0.5
+                    </uncertaintyWeight>
+                </logicTreeBranch>
+                                <logicTreeBranch
+                branchID="Bradley2013"
+                >
+                    <uncertaintyModel>
+                        Bradley2013
+                    </uncertaintyModel>
+                    <uncertaintyWeight>
+                        0.5
+                    </uncertaintyWeight>
+                </logicTreeBranch>
+                    
+            </logicTreeBranchSet>
+        </logicTreeBranchingLevel>
+    </logicTree>
+</nrml>

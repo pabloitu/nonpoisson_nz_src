@@ -6,6 +6,7 @@ from osgeo import gdal
 import alphashape
 import shapely
 
+from functools import partial
 import itertools
 import scipy as sp
 import time
@@ -51,7 +52,7 @@ from multiprocessing import Pool
 from csep.core.regions import geographical_area_from_bounds
 import seaborn
 import copy
-
+import pickle
 
 def get_tvzpolygon(spatial=False, metric='j2', bin=3):
 
@@ -836,6 +837,7 @@ class forecastModel(object):
         if mkdirs:
             self.dirs = {'output': join(self.model_path, 'output'),
                          'vti': join(self.model_path, 'vti'),
+                         'serial': join(self.model_path, 'serial'),
                          'figures': join(self.model_path, 'figures'),
                          'forecast': join(self.model_path, 'forecast')}
 
@@ -955,7 +957,7 @@ class forecastModel(object):
                              measure='j2', nbins=4, target_mmin=5.0,
                              target_mmax=8.0):
 
-        print('Creating Analytical Hazard from models')
+        print('Creating forecast from zonation and temporal models')
         catalog_span = catalog.end_year - catalog.end_year + 1
         if years:
             self.time_span = years
@@ -1082,8 +1084,6 @@ class forecastModel(object):
                 self.params_primary[point]['params'] = [mu_i, self.params_primary[point]['params'][1]]
             else:
                 self.params_primary[point]['params'] = [rate_target, 0]
-
-
             self.params_primary[point]['rate'] = rate_target
             self.params_primary[point]['bval'] = bval
 
@@ -1096,6 +1096,10 @@ class forecastModel(object):
                 rate_total = self.params_primary[point]['rate']
                 if self.params_primary[point]['model'] == 'NegBinom':
                     rate_total = self.params_primary[point]['params'][0]
+
+                if self.params_primary[point]['bval'] is not None:
+                    bval = self.params_primary[point]['bval']
+
 
                 tgr = self.truncated_GR(rate_total, bval, mbin, t_mmin, t_mmin, mmax)
                 if self.magnitudes is None:
@@ -1529,3 +1533,417 @@ class forecastModel(object):
             image_filename = join(self.dirs['vti'], vtk_name + '.vti')
         _ = geo.source_raster2vti(image_filename, raster2vti_names, attributes,
                                   offset=10)
+
+    @classmethod
+    def load(cls, model_name, filename=None):
+        """
+        Loads a serialized forecastModel object
+        :param filename:
+        :return:
+        """
+        if filename:
+            with open(filename, 'rb') as f:
+                obj = pickle.load(f)
+
+            return obj
+        else:
+            with open(paths.get_model('forecast', model_name, 'serial', 'obs.pickle'),
+                      'rb') as f:
+                obj = pickle.load(f)
+            return obj
+
+    def save(self, filename=None):
+        """
+        Serializes Model_results object into a file
+        :param filename: If None, save in results folder named with self.name
+        """
+        if filename:
+            with open(filename, 'wb') as obj:
+                pickle.dump(self, obj)
+        else:
+
+            with open(join(self.dirs['serial'], 'obs.pickle'), 'wb') as obj:
+                pickle.dump(self, obj)
+
+
+
+class stochasticModel(object):
+
+    def __init__(self, name,folder='', location=None, time_span=1.):
+
+        self.name = name
+        self.time_span = time_span
+
+        self.model_path = paths.get_oqpath(join(folder, name))
+        self.dirs = {'sources': join(self.model_path, 'sources'),
+                     'output': join(self.model_path, 'output'),
+                     'vti': join(self.model_path, 'vti'),
+                     'figures': join(self.model_path, 'figures')}
+        for dir_ in self.dirs.values():
+            makedirs(dir_, exist_ok=True)
+
+
+        self.grid_obs = location
+
+        print(f'Model folder: {self.model_path}')
+
+        self.total_n = 0
+        self.sets = {}
+
+    @staticmethod
+    def get_polygon_counts(oqpolygons, catalog):
+
+        poly_events = []
+        for poly in oqpolygons:
+
+            func = selector.CatalogueSelector(catalog)
+            cut_cat = func.within_polygon(poly)
+            if cut_cat.end_year and cut_cat.get_number_events() > 0:
+                nevents = cut_cat.get_number_events()
+            else:
+                nevents = 0
+            poly_events.append(nevents)
+        return poly_events
+
+    @staticmethod
+    def truncated_GR(n, bval, mag_bin, learning_mmin, target_mmin, target_mmax):
+
+        aval = np.log10(n) + bval * target_mmin
+        mag_bins = np.arange(learning_mmin, target_mmax + mag_bin, mag_bin)
+        mag_weights = (10 ** (aval - bval * (mag_bins - mag_bin / 2.)) - 10 ** (aval - bval * (mag_bins + mag_bin / 2.))) / \
+                      (10 ** (aval - bval * (learning_mmin - mag_bin/2.)) - 10 ** (aval - bval * (target_mmax + mag_bin/2.)))
+        return aval, mag_bins, mag_weights
+
+    @staticmethod
+    def mesh_polygon(polygon, disc=20):
+
+        mesh_polygon = polygon.discretize(disc).array
+        dx_pre = np.diff(mesh_polygon[0, :])
+        for i in range(len(dx_pre)):
+            if dx_pre[i] >= 0:
+                mesh_polygon[0, i] += np.random.uniform(- dx_pre[i] / 2., dx_pre[i] / 2.)
+            else:
+                mesh_polygon[0, i] += np.random.uniform(- dx_pre[i - 1] / 2., dx_pre[i - 1] / 2.)
+        dy = np.max(np.abs(np.diff(mesh_polygon[1, :])))
+        mesh_polygon[1, :] += np.random.uniform(- dy / 2., dy / 2., size=mesh_polygon.shape[1])
+
+        return mesh_polygon
+
+
+
+    def create_sets_from_models_polygon(self, temporal_model, spatial_model, catalog,
+                                        nsims=4000,
+                                        measure='jj2', nbins=4, spat_disc=10,
+                                        bval=1.0, learning_mmin=4.0,
+                                        target_mmin=5.0, target_mmax=8.0, mag_bin=0.1):
+
+        print('Creating Stochastic Event Set from models')
+        if isinstance(self.location, str):
+            poi = getattr(paths, self.location)
+        else:
+            poi = self.location
+
+        poi_point = Mesh(poi[:, 0], poi[:, 1])
+        oq_polygons, id_poly = spatial_model.get_oqpolygons(measure, nbins)
+        poly_poi = []
+        for id_, poly in enumerate(oq_polygons):
+            if poly.intersects(poi_point):
+                poly_poi = poly
+                id_poly = id_
+
+        mesh = self.mesh_polygon(poly_poi, spat_disc)
+        print('Meshing ready')
+        nevents = self.get_polygon_counts([poly_poi], catalog)[0]
+        self.total_n = nevents/10
+        print(f'Total of {nevents} in POI polygon')
+
+        n_total = temporal_model.get_conditional_numbers(nevents, nsims=nsims)
+
+        aval, mag_bins, mag_weights = self.truncated_GR(nevents, bval, mag_bin, learning_mmin, target_mmin, target_mmax)
+        magnitudes = []
+        positions = []
+        depths = []
+
+        for n_sim in n_total:
+            if n_sim != 0:
+                M_sim = random.choices(population=mag_bins, weights=mag_weights, k=n_sim)
+                m_sim = np.array([m for m in M_sim if m >= target_mmin])
+                if len(m_sim) > 0:
+                    p_sim = np.array(random.choices(population=mesh.T, k=len(m_sim)))
+                    d_sim = 10 + 20*np.round(np.random.random(size=len(m_sim)))
+
+                    magnitudes.append(m_sim)
+                    positions.append(p_sim)
+                    depths.append(d_sim)
+                    continue
+            # If catalog is blank, create dummy event
+            magnitudes.append([learning_mmin])
+            positions.append(np.array(random.choices(population=mesh.T, k=1)))
+            depths.append([np.array([30.0])])
+
+        print('Avg: %.1f, Min: %i, Max:%i events' % (np.average([len(i) for i in magnitudes]), np.min([len(i) for i in magnitudes]), np.max([len(i) for i in magnitudes])))
+        self.sets = {'N': n_total, 'M': magnitudes, 'P': positions, 'D': depths}
+        self.poly = np.array(poly_poi.coords)
+
+    def create_sets(self, temporal_model, spatial_model, catalog,
+                    nsims=4000,
+                    measure='j2', nbins=4, spat_disc=10,
+                    bval=1.0, learning_mmin=4.0,
+                    target_mmin=5.0, target_mmax=8.0, mag_bin=0.1):
+
+        print('Creating Stochastic Event Set from models')
+
+
+        oq_polygons, id_poly = spatial_model.get_oqpolygons(measure, nbins)
+        counts_polygons = self.get_polygon_counts(oq_polygons, catalog)
+        numbers = []
+
+        for i, (poly_poi, counts_poly) in enumerate(zip(oq_polygons, counts_polygons)):
+            if counts_poly < 1000. and counts_poly > 0:
+                n_poly = temporal_model.get_conditional_numbers(counts_poly, nsims=nsims)
+            elif counts_poly >= 1000:
+                n_poly = np.random.poisson(counts_poly, size=nsims)
+            else:
+                n_poly = None
+            print(f'Total of {counts_poly} in polygon {i}')
+            numbers.append(n_poly)
+
+        self.total_n = np.sum([i for i in counts_polygons if isinstance(i, (int, float))])/10.
+        print(f'TOTAL EVENTS: {self.total_n}')
+        mag_polygons = []
+        pos_polygons = []
+        depth_polygons = []
+
+        for i, (poly_poi, nevents, count) in enumerate(zip(oq_polygons, numbers, counts_polygons)):
+            if nevents is None:
+                continue
+
+            mesh = self.mesh_polygon(poly_poi, spat_disc)
+            aval, mag_bins, mag_weights = self.truncated_GR(count, bval, mag_bin, learning_mmin, learning_mmin, target_mmax)
+            mag_poly = []
+            pos_poly = []
+            depth_poly = []
+
+            for n_sim in nevents:
+                if n_sim != 0:
+                    M_sim = random.choices(population=mag_bins, weights=mag_weights, k=n_sim)
+                    m_sim = np.array([m for m in M_sim if m >= target_mmin])
+                    if len(m_sim) > 0:
+                        p_sim = np.array(random.choices(population=mesh.T, k=len(m_sim)))
+                        d_sim = 10 + 20*np.round(np.random.random(size=len(m_sim)))
+
+                        mag_poly.append(m_sim)
+                        pos_poly.append(p_sim)
+                        depth_poly.append(d_sim)
+                        continue
+                # If catalog is blank, create dummy event
+                mag_poly.append(np.array([learning_mmin]))
+                pos_poly.append(np.array(random.choices(population=mesh.T, k=1)))
+                depth_poly.append(np.array([30.0]))
+            mag_polygons.append(mag_poly)
+            pos_polygons.append(pos_poly)
+            depth_polygons.append(depth_poly)
+
+        magnitudes = []
+        positions = []
+        depths = []
+        for iter in range(nsims):
+            m = np.hstack([i[iter] for i in mag_polygons])
+            p = np.vstack([i[iter] for i in pos_polygons])
+            d = np.hstack([i[iter] for i in depth_polygons])
+
+            magnitudes.append(m)
+            positions.append(p)
+            depths.append(d)
+        # print('Avg: %.1f, Min: %i, Max:%i events' % (np.average([len(i) for i in mag_poly]), np.min([len(i) for i in mag_poly]), np.max([len(i) for i in mag_poly])))
+        self.sets = {'N': numbers , 'M': magnitudes, 'P': positions, 'D': depths}
+        self.poly = [np.array(p.coords) for p in oq_polygons]
+
+
+    def create_sets_discretized(self, temporal_model, spatial_model, catalog,
+                                nsims=4000,
+                                measure='j2', nbins=4, spat_disc=10,
+                                bval=1.0, learning_mmin=4.0,
+                                target_mmin=5.0, target_mmax=8.0, mag_bin=0.1):
+
+        print('Creating Stochastic Event Set from models')
+
+
+        oq_polygons, id_poly = spatial_model.get_oqpolygons(measure, nbins)
+        counts_polygons = self.get_polygon_counts(oq_polygons, catalog)
+        numbers = []
+
+        for i, (poly_poi, counts_poly) in enumerate(zip(oq_polygons, counts_polygons)):
+            if counts_poly < 1000. and counts_poly > 0:
+                n_poly = temporal_model.get_conditional_numbers(counts_poly, nsims=nsims)
+            elif counts_poly >= 1000:
+                n_poly = np.random.poisson(counts_poly, size=nsims)
+            else:
+                n_poly = None
+            print(f'Total of {counts_poly} in polygon {i}')
+            numbers.append(n_poly)
+
+        self.total_n = np.sum([i for i in counts_polygons if isinstance(i, (int, float))])/10.
+        print(f'TOTAL EVENTS: {self.total_n}')
+
+
+        magnitudes = [[]] * nsims
+        positions = [[]] * nsims
+        depths = [[]] * nsims
+
+
+        for i, (poly_poi, count) in enumerate(zip(oq_polygons, counts_polygons)):
+
+            if count is None or count == 0 :
+                continue
+            elif count < 1000. and count > 0:
+                params_poly = temporal_model.params_local[count]
+            elif count >= 1000:
+                params_poly = count
+
+            mesh = self.mesh_polygon(poly_poi, spat_disc)
+            npoints = mesh.shape[1]
+            aval, mag_bins, mag_weights = self.truncated_GR(count/npoints, bval, mag_bin, learning_mmin, learning_mmin, target_mmax)
+            for point in mesh.T:
+                if isinstance(params_poly, (list, np.ndarray)):
+                    mu = params_poly[2] / npoints
+                    alpha = params_poly[3]
+                    tau = 1 / alpha
+                    theta = tau / (tau + mu)
+                    nevents = st.nbinom.rvs(tau, theta, size=nsims)
+                else:
+                    mu = params_poly / npoints
+                    nevents = st.poisson.rvs(mu, size=nsims)
+
+                test = 0
+                for k, n_sim in enumerate(nevents):
+                    if n_sim != 0:
+                        M_sim = random.choices(population=mag_bins, weights=mag_weights, k=n_sim)
+                        m_sim = np.array([m for m in M_sim if m >= target_mmin])
+                        if len(m_sim) > 0:
+                            d_sim = 10 + 20 * np.round(np.random.random(size=len(m_sim)))
+                            magnitudes[k].append(m_sim)
+                            positions[k].append(np.tile(point, (len(m_sim), 1)) + 0.05 * np.random.random((len(m_sim), 2)))
+                            depths[k].append(d_sim)
+                            test += 1
+
+        for j, m in enumerate(magnitudes):
+            if len(m) == 0:
+                magnitudes[j] = np.array([learning_mmin])
+                positions[j] = np.array(random.choices(population=mesh.T, k=1))
+                depths[j] = np.array([30.0])
+            else:
+                magnitudes[j] = np.hstack(m)
+                positions[j] = np.vstack(positions[j])
+                depths[j] = np.hstack(depths[j])
+        # print('Avg: %.1f, Min: %i, Max:%i events' % (np.average([len(i) for i in mag_points]), np.min([len(i) for i in mag_points]), np.max([len(i) for i in mag_points])))
+        self.sets = {'N': numbers, 'M': magnitudes, 'P': positions, 'D': depths}
+        self.poly = [np.array(p.coords) for p in oq_polygons]
+
+    def plot_catalogs(self, n_cats, polygons=None):
+
+        for i in range(n_cats):
+            out = []
+            for a, (m, d, p) in enumerate(zip(self.sets['M'][i], self.sets['D'][i], self.sets['P'][i])):
+                if m == 4.0:
+                    continue
+                event_tuple = (a,
+                               csep.utils.time_utils.datetime_to_utc_epoch(datetime.datetime(1970, 1, 1, 1, 1, 1)),
+                               float(p[1]), float(p[0]), float(d), np.round(float(m), 2) )
+                out.append(event_tuple)
+            print(f'{len(out)} events')
+            catalog = csep.catalogs.CSEPCatalog(data=out)
+            plot_args = {'title': '%s Synthetic Catalog' % self.name,
+                         'mag_scale': 8,
+                         'markersize': 3,
+                         'basemap': 'stock_img',
+                         'mag_ticks': [5.0, 6.0, 7.0, 8.0],
+                         'projection': cartopy.crs.Mercator(central_longitude=179)}
+
+            ax = catalog.plot(plot_args=plot_args)
+            # fig, ax = plt.subplots()
+            if polygons:
+
+                extents = []
+                for pol in polygons:
+
+                    ax.plot(pol[:, 0], pol[:, 1],
+                            transform=cartopy.crs.PlateCarree(), linewidth=0.5,
+                            color='black')
+
+                    extents.append([np.min(pol[:, 0]), np.max(pol[:, 0]),
+                                    np.min(pol[:, 1]), np.max(pol[:, 1])])
+                extent = [np.min([i[0] for i in extents]),
+                          np.max([i[1] for i in extents]),
+                          np.min([i[2] for i in extents]),
+                          np.max([i[3] for i in extents])]
+
+                ax.set_extent(extent)
+            plt.tight_layout()
+            plt.savefig(join(self.dirs['figures'], 'cat_%i.png' % i), dpi=200)
+            plt.show()
+
+
+    def write_model(self, n_gmpe=1, lt_samples=1000, ses_per_lt=200, imtl={"PGA": list(np.logspace(-2, 0.2, 40))}, soil='C'):
+
+
+        job_filename = join(self.model_path, 'job.ini')
+        gmpe_lt_filename = join(self.model_path, 'gmpe_logic_tree.xml')
+
+        print('Writing files')
+
+        for f in os.listdir(self.dirs['sources']):
+            os.remove(os.path.join(self.dirs['sources'], f))
+
+        with Pool(16) as a:
+            ncats = len(self.sets['M'])
+            iterator = [(i, m, p, d, f, t) for i, m, p, d, f, t in
+                        zip(np.arange(ncats), self.sets['M'], self.sets['P'],
+                            self.sets['D'], [self.dirs['sources']]*ncats, [self.time_span]*ncats)]
+            a.starmap(write_syn_cat, iterator)
+        filenames = ['sources/source_%i.xml' % i for i in range(ncats)]
+
+
+        if self.grid_obs is None:
+            poi = np.genfromtxt(paths.csep_nz_grid)
+
+        else:
+            if isinstance(self.grid_obs, str):
+                poi = getattr(paths, self.grid_obs)
+            elif all(isinstance(loc, str) for loc in self.grid_obs):
+                poi = np.vstack([getattr(paths, loc) for loc in self.grid_obs])
+
+            elif isinstance(self.grid_obs, (list, np.ndarray)):
+                poi = self.grid_obs
+
+        a = sourceLogicTree('base')
+        a.load(paths.base_sm_ltree)
+        a.create_branches(filenames)
+        a.save(join(self.model_path, 'source_logic_tree.xml'))
+        np.savetxt(join(self.model_path, 'grid.txt'), poi, fmt='%.2f')
+        copyfile(getattr(paths, f'gmpe_lt_{n_gmpe}'), gmpe_lt_filename)
+        copyfile(paths.job_ses,  job_filename)
+        print('Writing ready')
+
+        import fileinput
+
+        with fileinput.FileInput(job_filename, inplace=True) as file:
+            for line in file:
+                print(line.replace('{name}', self.name), end='')
+        with fileinput.FileInput(job_filename, inplace=True) as file:
+            for line in file:
+                print(line.replace('{lt_samples}', f'{lt_samples}'), end='')
+        with fileinput.FileInput(job_filename, inplace=True) as file:
+            for line in file:
+                print(line.replace('{imtl}', f'{imtl}'), end='')
+        with fileinput.FileInput(job_filename, inplace=True) as file:
+            for line in file:
+                print(line.replace('{investigation_time}', f'{self.time_span}'), end='')
+        with fileinput.FileInput(job_filename, inplace=True) as file:
+            for line in file:
+                print(line.replace('{ses_per_lt}', f'{ses_per_lt}'), end='')
+        with fileinput.FileInput(job_filename, inplace=True) as file:
+            for line in file:
+                print(line.replace('{reference_vs30_value}', f'{soil_types[soil]}'), end='')
+        print('Writing ready')
+
