@@ -185,6 +185,6 @@ def plot_rate_cities(p, h, f, nf):
 if __name__ == '__main__':
 
     hybrid, pua, fe, fe_low, npfe, npfe_low = make_models_FE(5, 50, 0.925,
-                              vti=True, write_forecast=True)
+                                                              vti=True, write_forecast=True)
 
-    # plot_rate_cities(pua, hybrid, fe, npfe)
+    plot_rate_cities(pua, hybrid, fe, npfe)

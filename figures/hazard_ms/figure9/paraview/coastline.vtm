@@ -1,0 +1,44 @@
+<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">
+  <vtkMultiBlockDataSet>
+    <DataSet index="0" file="coastline/coastline_0_0.vtp"/>
+    <DataSet index="1" file="coastline/coastline_1_0.vtp"/>
+    <DataSet index="2" file="coastline/coastline_2_0.vtp"/>
+    <DataSet index="3" file="coastline/coastline_3_0.vtp"/>
+    <DataSet index="4" file="coastline/coastline_4_0.vtp"/>
+    <DataSet index="5" file="coastline/coastline_5_0.vtp"/>
+    <DataSet index="6" file="coastline/coastline_6_0.vtp"/>
+    <DataSet index="7" file="coastline/coastline_7_0.vtp"/>
+    <DataSet index="8" file="coastline/coastline_8_0.vtp"/>
+    <DataSet index="9" file="coastline/coastline_9_0.vtp"/>
+    <DataSet index="10" file="coastline/coastline_10_0.vtp"/>
+    <DataSet index="11" file="coastline/coastline_11_0.vtp"/>
+    <DataSet index="12" file="coastline/coastline_12_0.vtp"/>
+    <DataSet index="13" file="coastline/coastline_13_0.vtp"/>
+    <DataSet index="14" file="coastline/coastline_14_0.vtp"/>
+    <DataSet index="15" file="coastline/coastline_15_0.vtp"/>
+    <DataSet index="16" file="coastline/coastline_16_0.vtp"/>
+    <DataSet index="17" file="coastline/coastline_17_0.vtp"/>
+    <DataSet index="18" file="coastline/coastline_18_0.vtp"/>
+    <DataSet index="19" file="coastline/coastline_19_0.vtp"/>
+    <DataSet index="20" file="coastline/coastline_20_0.vtp"/>
+    <DataSet index="21" file="coastline/coastline_21_0.vtp"/>
+    <DataSet index="22" file="coastline/coastline_22_0.vtp"/>
+    <DataSet index="23" file="coastline/coastline_23_0.vtp"/>
+    <DataSet index="24" file="coastline/coastline_24_0.vtp"/>
+    <DataSet index="25" file="coastline/coastline_25_0.vtp"/>
+    <DataSet index="26" file="coastline/coastline_26_0.vtp"/>
+    <DataSet index="27" file="coastline/coastline_27_0.vtp"/>
+    <DataSet index="28" file="coastline/coastline_28_0.vtp"/>
+    <DataSet index="29" file="coastline/coastline_29_0.vtp"/>
+    <DataSet index="30" file="coastline/coastline_30_0.vtp"/>
+    <DataSet index="31" file="coastline/coastline_31_0.vtp"/>
+    <DataSet index="32" file="coastline/coastline_32_0.vtp"/>
+    <DataSet index="33" file="coastline/coastline_33_0.vtp"/>
+    <DataSet index="34" file="coastline/coastline_34_0.vtp"/>
+    <DataSet index="35" file="coastline/coastline_35_0.vtp"/>
+    <DataSet index="36" file="coastline/coastline_36_0.vtp"/>
+    <DataSet index="37" file="coastline/coastline_37_0.vtp"/>
+    <DataSet index="38" file="coastline/coastline_38_0.vtp"/>
+    <DataSet index="39" file="coastline/coastline_39_0.vtp"/>
+  </vtkMultiBlockDataSet>
+</VTKFile>

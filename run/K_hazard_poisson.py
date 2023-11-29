@@ -211,7 +211,15 @@ def plot_sensibility(locations):
         poi = getattr(paths, location)
 
         for j, mod in enumerate(models):
-            mod.plot_pointcurves('PGA', poi, ax=axes.ravel()[i], plot_args={'mean_c': colors[j],
+            if i == 6 and j == 3:
+                mod.plot_pointcurves('PGA', getattr(paths, 'Napier'), ax=axes.ravel()[i], plot_args={'mean_c': colors[j],
+                                                                                'mean_s': ls[0], 'stats_lw': 2,
+                                                                                'xlims': [1e-2, 1.5],
+                                                                                'ylims': [1e-3, 2],
+                                                                                'poes': False}, yrs=50)
+            else:
+
+                mod.plot_pointcurves('PGA', poi, ax=axes.ravel()[i], plot_args={'mean_c': colors[j],
                                                                             'mean_s': ls[0], 'stats_lw': 2,
                                                                             'xlims': [1e-2, 1.5],
                                                                             'ylims': [1e-3, 2],
@@ -269,6 +277,5 @@ if __name__ == '__main__':
               'Gisborne', 'Queenstown', 'Tauranga', 'Napier'
               ]
     plot_sensibility(cities)
-    # plot_sens(cities)
-    # make_vti()
+    make_vti()
 

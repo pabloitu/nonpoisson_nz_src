@@ -8,8 +8,8 @@ from nonpoisson import catalogs
 from nonpoisson.zonation import GeodeticModel
 from datetime import datetime as dt
 from matplotlib import pyplot as plt
-
-
+import seaborn as sns
+from os.path import join
 def make_nonpoisson_hazard(cities=None):
 
     imtl = {"PGA": list(np.logspace(-2, 0.2, 40))}
@@ -55,9 +55,14 @@ def run_models():
 
 
 def plot_hazard(locations):
-    subfolders = ['m', 'pua_3', 'npua', 'fe_low', 'npfe']
-    names = ['Hybrid Multiplicative', 'Poisson URZ', 'Negbinom URZ', 'Poisson FE', 'Negbinom FE']
-    colors = ['blue', 'red', 'green', 'purple', 'orange']
+
+    sns.set_style("darkgrid", {"ytick.left": True, 'xtick.bottom': True,
+                               "axes.facecolor": ".9", "axes.edgecolor": "0",
+                               'axes.linewidth': '1', 'font.family': 'Ubuntu'})
+
+    subfolders = ['m', 'pua_3',  'fe', 'npua', 'npfe']
+    names = ['Multiplicative', 'Poisson URZ', 'Poisson FE', 'Negbinom URZ','Negbinom FE']
+    colors = ['blue', 'red', 'purple', 'green', 'orange']
     ls = ['-', '-', '-', '--', '--']
     imtl = {"PGA": list(np.logspace(-2, 0.2, 40))}
     models = []
@@ -69,35 +74,38 @@ def plot_hazard(locations):
         model.get_stats('hcurves', 'PGA')
         models.append(model)
 
-    city_groups = [locations[:3]]
+    city_groups = [locations[:4], locations[4:]]
     for city_ns, locs in enumerate(city_groups):
-        fig, axes = plt.subplots(1, 3, figsize=(12, 5), sharex=True, sharey=True)
+        fig, axes = plt.subplots(1, 4, figsize=(12, 5), sharex=True, sharey=True)
         for i, location in enumerate(locs):
             poi = getattr(paths, location)
             for j, model in enumerate(models):
                 model.plot_pointcurves('PGA', poi, ax=axes.ravel()[i], plot_args={'mean_c': colors[j],
                                                                                   'mean_s': ls[j], 'stats_lw': 2,
+                                                                                  'xlims': [3e-2, 1e0],
                                                                                   'poes': j == 0}, yrs=50)
             axes.ravel()[i].set_title(location, fontsize=15)
             axes.ravel()[i].grid(visible=True, which='minor', color='white', linestyle='-', linewidth=0.5)
-
-
+            axes.ravel()[i].tick_params(axis='both', labelsize=17)
         axes.ravel()[0].legend(loc=3, fontsize=14)
         plt.subplots_adjust(hspace=0.16, wspace=0.03)
 
         # fig.supxlabel(f'PGA $[g]$', fontsize=17)
         ylabel = 'Probability of exceedance - %i years' % 50
-        # fig.supylabel(ylabel, fontsize=14)
+        axes.ravel()[0].set_ylabel(ylabel, fontsize=16)
         plt.tight_layout()
-        # plt.savefig(join(paths.ms_paths['K'], f'figures_hazard/m_{city_ns}'),
-        #             dpi=300, facecolor=(0, 0, 0, 0))
+        plt.savefig(join(paths.ms2_figs[f'fig{11 + city_ns}'], f'hazard_cities_{city_ns}.png'),
+                    dpi=300, bbox_inches='tight')
+        plt.savefig(join(paths.ms2_figs[f'fig{11 + city_ns}'], f'fig{11 + city_ns}.png'),
+                    dpi=1200, bbox_inches='tight')
         plt.show()
-
+    sns.reset_defaults()
 
 def make_vti():
 
 
-    subfolders =  ['npua', 'fe_low', 'npfe']
+    subfolders =  ['npua', 'fe_low', 'npfe', 'npfe_low']
+    subfolders = ['npfe_low']
     imtl = {"PGA": list(np.logspace(-2, 0.2, 40))}
 
     for f in subfolders:
@@ -113,9 +121,11 @@ def make_vti():
 
 if __name__ == '__main__':
 
-    # cities = ['Auckland', 'Dunedin', 'Wellington']
-    # make_nonpoisson_hazard()
-    # run_models()
-    # plot_hazard(cities)
+    make_nonpoisson_hazard()
+    run_models()
+    cities = ['Gisborne', 'Auckland', 'Wellington', 'Dunedin',
+              'Napier', 'Tauranga', 'Queenstown', 'Invercargill'
+              ]
+    plot_hazard(cities)
     make_vti()
 
