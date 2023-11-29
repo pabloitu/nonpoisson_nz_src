@@ -31,9 +31,9 @@ def make_models_FE(N, years, bval, folder='', vti=False,
     spatial.bins_polygonize([metric], [bins], load=True, post_proc=True)
     spatial.intersect_by_polygon(paths.region_nz_buff, 'j2', 3)
 
-    catalog = catalogs.filter_cat(catalogs.get_cat_nz(), mws=(4.99, 10.0),
+    catalog = catalogs.filter_cat(catalogs.get_cat_nz(), mws=(3.99, 10.0),
                                   depth=(40, -2),
-                                  start_time=dt(1950, 1, 1),
+                                  start_time=dt(1964, 1, 1),
                                   end_time=None,
                                   shapefile=paths.region_nz_test)
 
@@ -107,14 +107,14 @@ def make_models_FE(N, years, bval, folder='', vti=False,
         fe_low.normalize()
         npfe.normalize()
         npfe_low.normalize()
-        # hybrid.write_vti(path=os.path.join(fig_path, 'paraview', f'hybrid.vti'),
-        #                  res=res, epsg=crs, crop=True, res_method='nearest')
-        # pua.write_vti(path=os.path.join(fig_path, 'paraview', f'pua.vti'),
-        #               res=res, epsg=crs, crop=True, res_method='nearest')
-        # fe.write_vti(path=os.path.join(fig_path, 'paraview', f'fe.vti'),
-        #              res=res, epsg=crs, crop=True, res_method='nearest')
-        # fe_low.write_vti(path=os.path.join(fig_path, 'paraview', f'fe_low.vti'),
-        #                  res=res, epsg=crs, crop=True, res_method='nearest')
+        hybrid.write_vti(path=os.path.join(fig_path, 'paraview', f'hybrid.vti'),
+                         res=res, epsg=crs, crop=True, res_method='nearest')
+        pua.write_vti(path=os.path.join(fig_path, 'paraview', f'pua.vti'),
+                      res=res, epsg=crs, crop=True, res_method='nearest')
+        fe.write_vti(path=os.path.join(fig_path, 'paraview', f'fe.vti'),
+                     res=res, epsg=crs, crop=True, res_method='nearest')
+        fe_low.write_vti(path=os.path.join(fig_path, 'paraview', f'fe_low.vti'),
+                         res=res, epsg=crs, crop=True, res_method='nearest')
         npfe_low.write_vti(path=os.path.join(fig_path, 'paraview', f'npfe_low.vti'),
                            res=res, epsg=crs, crop=True, res_method='nearest')
         hybrid.normalize(N*years)
@@ -127,6 +127,8 @@ def make_models_FE(N, years, bval, folder='', vti=False,
         npfe.normalize(N*years)
         npfe.save()
 
+    hybrid.save()
+    pua.save()
     npua.save()
     fe.save()
     fe_low.save()
