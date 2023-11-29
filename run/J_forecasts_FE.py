@@ -71,45 +71,42 @@ def make_models_FE(N, years, bval, folder='', vti=False,
 
     fe_low = forecastModel.floor_2models(f'fe_low', hybrid, pua, bin=0,
                                      floor_type='count', folder=folder)
-    fe_low.fill_towards(8)
+
+
+    fe_low.fill_towards(10)
     fe_low.set_mfd(bval)
     fe_low.normalize(N*years)
-
-
     npfe = forecastModel.floor_2models(f'npfe', hybrid, npua, bin=None,
                                            floor_type='count', folder=folder)
     npfe.set_mfd(bval)
-    npfe.normalize(N*years)
-
-
     npfe_low = forecastModel.floor_2models(f'npfe', hybrid, npua, bin=0,
                                        floor_type='count', folder=folder)
-    npfe_low.fill_towards(8)
+    npfe_low.fill_towards(10)
     npfe_low.set_mfd(bval)
-    npfe_low.normalize(N*years)
 
     fig_path = paths.ms1_figs['fig16']
     os.makedirs(os.path.join(fig_path, 'paraview'), exist_ok=True)
 
     if write_forecast:
         hybrid.write_forecast()
+        npua.write_forecast()
         pua.write_forecast()
         fe.write_forecast()
         fe_low.write_forecast()
         npfe.write_forecast()
         npfe_low.write_forecast()
 
-
     if vti:
         hybrid.normalize()
+        npua.normalize()
         pua.normalize()
         fe.normalize()
         fe_low.normalize()
-        npfe.normalize()
-        npfe_low.normalize()
         hybrid.write_vti(path=os.path.join(fig_path, 'paraview', f'hybrid.vti'),
                          res=res, epsg=crs, crop=True, res_method='nearest')
         pua.write_vti(path=os.path.join(fig_path, 'paraview', f'pua.vti'),
+                      res=res, epsg=crs, crop=True, res_method='nearest')
+        npua.write_vti(path=os.path.join(fig_path, 'paraview', f'npua.vti'),
                       res=res, epsg=crs, crop=True, res_method='nearest')
         fe.write_vti(path=os.path.join(fig_path, 'paraview', f'fe.vti'),
                      res=res, epsg=crs, crop=True, res_method='nearest')
@@ -119,13 +116,9 @@ def make_models_FE(N, years, bval, folder='', vti=False,
                            res=res, epsg=crs, crop=True, res_method='nearest')
         hybrid.normalize(N*years)
         pua.normalize(N*years)
+        npua.normalize(N*years)
         fe.normalize(N*years)
         fe_low.normalize(N*years)
-        fe_low.save()
-        npfe_low.normalize(N*years)
-        npfe_low.save()
-        npfe.normalize(N*years)
-        npfe.save()
 
     hybrid.save()
     pua.save()
@@ -192,6 +185,6 @@ def plot_rate_cities(p, h, f, nf):
 if __name__ == '__main__':
 
     hybrid, pua, fe, fe_low, npfe, npfe_low = make_models_FE(5, 50, 0.925,
-                              vti=False, write_forecast=True)
+                              vti=True, write_forecast=True)
 
-    plot_rate_cities(pua, hybrid, fe, npfe)
+    # plot_rate_cities(pua, hybrid, fe, npfe)

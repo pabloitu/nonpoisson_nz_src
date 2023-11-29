@@ -114,8 +114,8 @@ def make_vti():
 if __name__ == '__main__':
 
     cities = ['Auckland', 'Dunedin', 'Wellington']
-    # make_nonpoisson_hazard(cities)
-    # run_models()
+    make_nonpoisson_hazard()
+    run_models()
     plot_hazard(cities)
     # make_vti()
 

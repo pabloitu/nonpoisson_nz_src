@@ -8,6 +8,7 @@ import seaborn as sns
 import os
 sns.set_style("darkgrid", {"axes.facecolor": ".9", 'font.family': 'Ubuntu'})
 
+
 def create_forecast_nb(bval=0.925, bval_tvz=1.2, vti=True):
 
     crs = 'EPSG:2193'
@@ -27,9 +28,8 @@ def create_forecast_nb(bval=0.925, bval_tvz=1.2, vti=True):
     # # spatial.intersect_by_polygon(paths.region_nz_buff, 'j2', 3)
     catalog = catalogs.filter_cat(catalogs.get_cat_nz(), mws=(4.0, 10.0),
                                   depth=(40, -2),
-                                  start_time=dt(1972, 1, 1), end_time=None,
+                                  start_time=dt(1964, 1, 1), end_time=None,
                                   shapefile=paths.region_nz_test)
-
 
     forecast = forecastModel('nb', folder=folder,
                                       time_span=50)
