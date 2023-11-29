@@ -79,7 +79,7 @@ def make_models_FE(N, years, bval, folder='', vti=False,
     npfe = forecastModel.floor_2models(f'npfe', hybrid, npua, bin=None,
                                            floor_type='count', folder=folder)
     npfe.set_mfd(bval)
-    npfe_low = forecastModel.floor_2models(f'npfe', hybrid, npua, bin=0,
+    npfe_low = forecastModel.floor_2models(f'npfe_low', hybrid, npua, bin=0,
                                        floor_type='count', folder=folder)
     npfe_low.fill_towards(10)
     npfe_low.set_mfd(bval)
@@ -125,8 +125,8 @@ def make_models_FE(N, years, bval, folder='', vti=False,
     npua.save()
     fe.save()
     fe_low.save()
-    npfe_low.save()
     npfe.save()
+    npfe_low.save()
 
     return hybrid, pua, fe, fe_low, npfe, npfe_low
 

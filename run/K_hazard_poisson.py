@@ -8,8 +8,8 @@ from nonpoisson import catalogs
 from nonpoisson.zonation import GeodeticModel
 from datetime import datetime as dt
 from matplotlib import pyplot as plt
-
-
+from os.path import join
+import seaborn as sns
 def make_poisson_hazard(cities=None):
 
     imtl = {"PGA": list(np.logspace(-2, 0.2, 40))}
@@ -77,84 +77,162 @@ def run_models():
         run_folder(folder)
 
 
-def plot_hazard(locations):
-    subfolders = ['m', 'pua_3', 'fe']
-    names = ['Hybrid Multiplicative', 'Poisson URZ', 'Poisson FE']
+def plot_results_cities(locations):
+    # folder = paths.get_oqpath(folder)
+    # calc_ids = [2, 1, 3]
+    # folder_names = ['hybrid_m', 'fe_m',  'pua_3',]
+    sns.set_style("darkgrid", {"ytick.left": True, 'xtick.bottom': True,
+                               "axes.facecolor": ".9", "axes.edgecolor": "0",
+                               'axes.linewidth': '1', 'font.family': 'Ubuntu'})
+
+    model_titles = ['Multiplicative',  'Poisson URZ', 'Poisson FE',]
     colors = ['blue', 'red', 'purple']
     ls = ['-', '-', '--']
     imtl = {"PGA": list(np.logspace(-2, 0.2, 40))}
-    models = []
 
-    for n, f in zip(names, subfolders):
-        print('Model: ', f)
-        model = hazardResults(n, paths.get_model('forecast', f))
-        model.parse_db(imtl)
-        model.get_stats('hcurves', 'PGA')
-        models.append(model)
+    hybrid = hazardResults(model_titles[0], paths.get_model('forecast', 'm'))
+    hybrid.parse_db(imtl)
+    hybrid.get_stats('hcurves', 'PGA')
 
-    city_groups = [locations[:3]]
-    for city_ns, locs in enumerate(city_groups):
-        fig, axes = plt.subplots(1, 3, figsize=(12, 5), sharex=True, sharey=True)
-        for i, location in enumerate(locs):
-            poi = getattr(paths, location)
-            for j, model in enumerate(models):
-                model.plot_pointcurves('PGA', poi, ax=axes.ravel()[i], plot_args={'mean_c': colors[j],
-                                                                                  'mean_s': ls[j], 'stats_lw': 2,
-                                                                                  'poes': j == 0}, yrs=50)
-            axes.ravel()[i].set_title(location, fontsize=15)
-            axes.ravel()[i].grid(visible=True, which='minor', color='white', linestyle='-', linewidth=0.5)
+    pua = hazardResults(model_titles[1], paths.get_model('forecast', 'pua_3'))
+    pua.parse_db(imtl)
+    pua.get_stats('hcurves', 'PGA')
 
+    fem = hazardResults(model_titles[2], paths.get_model('forecast', 'fe'))
+    fem.parse_db(imtl)
+    fem.get_stats('hcurves', 'PGA')
 
-        axes.ravel()[0].legend(loc=3, fontsize=14)
-        plt.subplots_adjust(hspace=0.16, wspace=0.03)
+    fig, axes = plt.subplots(3, 3, figsize=(16, 10), sharex=True, sharey=True)
+    i = 0
 
-        # fig.supxlabel(f'PGA $[g]$', fontsize=17)
-        ylabel = 'Probability of exceedance - %i years' % 50
-        # fig.supylabel(ylabel, fontsize=14)
-        plt.tight_layout()
-        # plt.savefig(join(paths.ms_paths['K'], f'figures_hazard/m_{city_ns}'),
-        #             dpi=300, facecolor=(0, 0, 0, 0))
-        plt.show()
+    for location in locations:
+        poi = getattr(paths, location)
 
+        hybrid.plot_pointcurves('PGA', poi, ax=axes.ravel()[i], plot_args={'mean_c': colors[0], 'mean_s': ls[0], 'stats_lw': 2,
+                                                                           'xlims': [1e-2, 1.5],
+                                                                           'ylims': [1e-3, 2],
+                                                                           'poes': False}, yrs=50)
+        pua.plot_pointcurves('PGA', poi, ax=axes.ravel()[i], plot_args={'mean_c': colors[1], 'mean_s': ls[1], 'stats_lw': 2,
+                                                                        'xlims': [1e-2, 1.5],
+                                                                        'ylims': [1e-3, 2],
+                                                                        'poes': False}, yrs=50)
+        fem.plot_pointcurves('PGA', poi, ax=axes.ravel()[i], plot_args={'mean_c': colors[2], 'mean_s': ls[2], 'stats_lw': 2,
+                                                                        'xlims': [1e-2, 1.5],
+                                                                        'ylims': [1e-3, 2],
+                                                                        'poes': True}, yrs=50)
 
-def plot_sens(locations):
-    subfolders = ['pua_3', 'pua_4', 'pua_5', 'pua_ss', 'pua_tau_max']
-    names = ['Bins3', 'Bins4', 'Bins5', 'BinsSS', 'BinsGammamax']
-    colors = ['blue', 'red', 'purple', 'green', 'yellow']
-    ls = ['-', '-', '--', '--', '--']
+        axes.ravel()[i].grid(visible=True, which='minor', color='white', linestyle='-', linewidth=0.8)
+        axes.ravel()[i].grid(axis='both', visible=True, which='major', linewidth=2)
+        axes.ravel()[i].set_title(location, fontsize=18)
+        axes.ravel()[i].tick_params(axis='both', labelsize=17)
+
+        if i == 0:
+            axes.ravel()[i].legend(loc=1, fontsize=16)
+        i += 1
+    plt.subplots_adjust(hspace=0.16, wspace=0.03)
+    fig.supxlabel(f'PGA $[g]$', fontsize=24)
+    ylabel = 'Probability of one or more exceedances - %i years' % 50
+    fig.supylabel(ylabel, fontsize=24)
+    plt.tight_layout()
+    plt.savefig(join(paths.ms2_figs['fig6'], f'poisson_curves.png'), dpi=300)
+    plt.savefig(join(paths.ms2_figs['fig6'], f'fig6.png'), dpi=1200)
+    plt.show()
+    sns.reset_defaults()
+
+# def plot_hazard(locations):
+#     subfolders = ['m', 'pua_3', 'fe']
+#     names = ['Hybrid', 'Poisson URZ', 'Poisson FE']
+#     colors = ['blue', 'red', 'purple']
+#     ls = ['-', '-', '--']
+#     imtl = {"PGA": list(np.logspace(-2, 0.2, 40))}
+#     models = []
+#
+#     for n, f in zip(names, subfolders):
+#         print('Model: ', f)
+#         model = hazardResults(n, paths.get_model('forecast', f))
+#         model.parse_db(imtl)
+#         model.get_stats('hcurves', 'PGA')
+#         models.append(model)
+#
+#     city_groups = [locations[:3], locations[3:6], locations[6:9]]
+#
+#     for city_ns, locs in enumerate(city_groups):
+#         fig, axes = plt.subplots(1, 3, figsize=(12, 5), sharex=True, sharey=True)
+#         for i, location in enumerate(locs):
+#             poi = getattr(paths, location)
+#             for j, model in enumerate(models):
+#                 model.plot_pointcurves('PGA', poi, ax=axes.ravel()[i], plot_args={'mean_c': colors[j],
+#                                                                                   'mean_s': ls[j], 'stats_lw': 2,
+#                                                                                   'poes': j == 0}, yrs=50)
+#             axes.ravel()[i].set_title(location, fontsize=15)
+#             axes.ravel()[i].grid(visible=True, which='minor', color='white', linestyle='-', linewidth=0.5)
+#
+#         axes.ravel()[0].legend(loc=3, fontsize=14)
+#         plt.subplots_adjust(hspace=0.16, wspace=0.03)
+#
+#         # fig.supxlabel(f'PGA $[g]$', fontsize=17)
+#         ylabel = 'Probability of exceedance - %i years' % 50
+#         # fig.supylabel(ylabel, fontsize=14)
+#         plt.tight_layout()
+#         # plt.savefig(join(paths.ms_paths['K'], f'figures_hazard/m_{city_ns}'),
+#         #             dpi=300, facecolor=(0, 0, 0, 0))
+#         plt.show()
+
+def plot_sensibility(locations):
+    # folder = paths.get_oqpath(folder)
+    # calc_ids = [2, 1, 3]
+    # folder_names = ['hybrid_m', 'fe_m',  'pua_3',]
+    sns.set_style("darkgrid", {"ytick.left": True, 'xtick.bottom': True,
+                               "axes.facecolor": ".9", "axes.edgecolor": "0",
+                               'axes.linewidth': '1', 'font.family': 'Ubuntu'})
+
+    model_titles = ['$J_2$ - 3 bins',  '$J_2$ - 4 bins', '$J_2$ - 5 bins',
+                    '$\mathrm{SS}$ - 4 bins', '$\gamma_{\mathrm{max}}$ - 4 bins']
+
+    colors = ['darkred', 'red', 'orange', 'green', 'lightblue']
+    ls = ['--', '--', '--', '-.', '-.']
     imtl = {"PGA": list(np.logspace(-2, 0.2, 40))}
-    models = []
 
-    for n, f in zip(names, subfolders):
-        print('Model: ', f)
-        model = hazardResults(n, paths.get_model('forecast', f))
-        model.parse_db(imtl)
-        model.get_stats('hcurves', 'PGA')
-        models.append(model)
+    pua3 = hazardResults(model_titles[0], paths.get_model('forecast', 'pua_3'))
+    pua4 = hazardResults(model_titles[1], paths.get_model('forecast', 'pua_4'))
+    pua5 = hazardResults(model_titles[2], paths.get_model('forecast', 'pua_5'))
+    puass = hazardResults(model_titles[3], paths.get_model('forecast', 'pua_ss'))
+    puagamma = hazardResults(model_titles[4], paths.get_model('forecast', 'pua_tau_max'))
+    models = [pua3, pua4, pua5, puass, puagamma]
 
-    city_groups = [locations[:3]]
-    for city_ns, locs in enumerate(city_groups):
-        fig, axes = plt.subplots(1, 3, figsize=(12, 5), sharex=True, sharey=True)
-        for i, location in enumerate(locs):
-            poi = getattr(paths, location)
-            for j, model in enumerate(models):
-                model.plot_pointcurves('PGA', poi, ax=axes.ravel()[i], plot_args={'mean_c': colors[j],
-                                                                                  'mean_s': ls[j], 'stats_lw': 2,
-                                                                                  'poes': j == 0}, yrs=50)
-            axes.ravel()[i].set_title(location, fontsize=15)
-            axes.ravel()[i].grid(visible=True, which='minor', color='white', linestyle='-', linewidth=0.5)
+    for i in models:
+        i.parse_db(imtl)
+        i.get_stats('hcurves', 'PGA')
 
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8), sharex=True, sharey=True)
+    i = 0
 
-        axes.ravel()[0].legend(loc=3, fontsize=14)
-        plt.subplots_adjust(hspace=0.16, wspace=0.03)
+    for location in locations:
+        poi = getattr(paths, location)
 
-        # fig.supxlabel(f'PGA $[g]$', fontsize=17)
-        ylabel = 'Probability of exceedance - %i years' % 50
-        # fig.supylabel(ylabel, fontsize=14)
-        plt.tight_layout()
-        # plt.savefig(join(paths.ms_paths['K'], f'figures_hazard/m_{city_ns}'),
-        #             dpi=300, facecolor=(0, 0, 0, 0))
-        plt.show()
+        for j, mod in enumerate(models):
+            mod.plot_pointcurves('PGA', poi, ax=axes.ravel()[i], plot_args={'mean_c': colors[j],
+                                                                            'mean_s': ls[0], 'stats_lw': 2,
+                                                                            'xlims': [1e-2, 1.5],
+                                                                            'ylims': [1e-3, 2],
+                                                                            'poes': False}, yrs=50)
+        axes.ravel()[i].grid(visible=True, which='minor', color='white', linestyle='-', linewidth=0.8)
+        axes.ravel()[i].grid(axis='both', visible=True, which='major', linewidth=2)
+        axes.ravel()[i].set_title(location, fontsize=21)
+        axes.ravel()[i].tick_params(axis='both', labelsize=17)
+        if i == 0:
+            axes.ravel()[i].legend(loc=3, fontsize=12, ncols=2)
+        i += 1
+    plt.subplots_adjust(hspace=0.16, wspace=0.03)
+    fig.supxlabel(f'PGA $[g]$', fontsize=24)
+    ylabel = 'Probability of one or more exceedances - %i years' % 50
+    fig.supylabel(ylabel, fontsize=24)
+    plt.tight_layout()
+    plt.savefig(join(paths.ms2_figs['fig7'], f'poisson_sensibility.png'), dpi=300)
+    plt.savefig(join(paths.ms2_figs['fig7'], f'fig7.png'), dpi=1200)
+    plt.show()
+    sns.reset_defaults()
+
 
 
 def make_vti():
@@ -178,11 +256,19 @@ def make_vti():
 
 if __name__ == '__main__':
 
-    cities = ['Auckland', 'Dunedin', 'Wellington']
-    make_poisson_hazard()
-    make_poisson_sens_hazard()
-    run_models()
-    plot_hazard(cities)
-    plot_sens(cities)
-    make_vti()
+
+    # make_poisson_hazard()
+    # make_poisson_sens_hazard()
+    # run_models()
+    cities = ['Auckland', 'Tauranga', 'Gisborne',
+              'Napier', 'Wellington', 'Christchurch',
+              'Queenstown', 'Dunedin', 'Invercargill'
+              ]
+    plot_results_cities(cities)
+    cities = ['Auckland', 'Dunedin', 'Wellington', 'Christchurch',
+              'Gisborne', 'Queenstown', 'Tauranga', 'Napier'
+              ]
+    plot_sensibility(cities)
+    # plot_sens(cities)
+    # make_vti()
 

@@ -97,7 +97,7 @@ def plot_hazard(locations):
 def make_vti():
 
 
-    subfolders = ['m', 'fe', 'pua_3']
+    subfolders =  ['npua', 'fe_low', 'npfe']
     imtl = {"PGA": list(np.logspace(-2, 0.2, 40))}
 
     for f in subfolders:
@@ -113,9 +113,9 @@ def make_vti():
 
 if __name__ == '__main__':
 
-    cities = ['Auckland', 'Dunedin', 'Wellington']
-    make_nonpoisson_hazard()
-    run_models()
-    plot_hazard(cities)
-    # make_vti()
+    # cities = ['Auckland', 'Dunedin', 'Wellington']
+    # make_nonpoisson_hazard()
+    # run_models()
+    # plot_hazard(cities)
+    make_vti()
 

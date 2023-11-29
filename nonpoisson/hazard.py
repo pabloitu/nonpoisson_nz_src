@@ -1099,15 +1099,14 @@ class hazardResults(object):
                 labels = [self.name]
 
         index_measure = np.argwhere(np.in1d(sorted(list(self.imtl.keys())), measure)).ravel()[0]
-        if isinstance(point, int):
-            point = point
+        if np.argwhere(np.all(np.isclose(self.grid, point), axis=1)).shape[0]:
+            print(np.isclose(self.grid, point))
+            point = np.argwhere(np.all(np.isclose(self.grid, point), axis=1))[0, 0]
         else:
-            if np.argwhere(np.all(np.isclose(self.grid, point), axis=1)).shape[0]:
-                point = np.argwhere(np.all(np.isclose(self.grid, point), axis=1))[0, 0]
-            else:
-                point = np.argmin(np.sum((self.grid - point)**2, axis=1))
-                # print(point)
-                # point = np.argwhere(np.all(np.isclose(self.grid, point + 0.05), axis=1))[0, 0]
+            point = np.argmin(np.sum((self.grid - point) ** 2, axis=1))
+
+
+
 
         title = title if title else '%s - $x=(%.1f,%.1f)$' % (self.name, self.grid[point, 0], self.grid[point, 1])
 
@@ -1408,6 +1407,9 @@ class hazardResults(object):
             Data = (self.hmaps, self.immp, self.hcurves_stats, self.hmaps_stats,
                     self.ks1_curve, self.ks1_map, self.chi_curve, self.chi_map)
             pickle.dump(Data, hazardobj)
+
+
+seaborn.reset_defaults()
 
 
 if __name__ == '__main__':

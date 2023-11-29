@@ -193,7 +193,7 @@ ms_figroot = join(main, 'figures')
 forecast_ms = join(ms_figroot, 'forecasts_ms')
 hazard_ms = join(ms_figroot, 'hazard_ms')
 
-ms1_figs = {f'fig{i}': join(forecast_ms, f'figure{i}') for i in range(1, 23)}
+ms1_figs = {f'fig{i}': join(forecast_ms, f'figure{i}') for i in range(1, 18)}
 ms2_figs = {f'fig{i}': join(hazard_ms, f'figure{i}') for i in range(1, 13)}
 
 

@@ -45,8 +45,6 @@ def create_forecast_nb(bval=0.925, bval_tvz=1.2, vti=True):
         forecast.write_vti(path=os.path.join(fig_path, 'paraview', f'npua_3.vti'),
                            res=res, epsg=crs, crop=True, res_method='nearest')
 
-
-
 if __name__ == '__main__':
 
     # create_temporal_models()
