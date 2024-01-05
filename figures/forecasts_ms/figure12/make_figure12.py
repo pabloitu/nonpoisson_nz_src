@@ -154,7 +154,7 @@ def makefig_3bins():
 
     # get color transfer function/color map for 'j2_disc'
     j2_discLUT = GetColorTransferFunction('j2_disc')
-    j2_discLUT.AutomaticRescaleRangeMode = 'Grow and update every timestep'
+    j2_discLUT.AutomaticRescaleRangeMode = 'Never'
     j2_discLUT.AnnotationsInitialized = 1
     j2_discLUT.TransferFunction2D = j2_discTF2D
     j2_discLUT.RGBPoints = [-0.5, 0.054902, 0.109804, 0.121569, -0.35, 0.07451,
@@ -415,7 +415,7 @@ def makefig_4bins():
 
     # get color transfer function/color map for 'j2_disc'
     j2_discLUT = GetColorTransferFunction('j2_disc')
-    j2_discLUT.AutomaticRescaleRangeMode = 'Grow and update every timestep'
+    j2_discLUT.AutomaticRescaleRangeMode = 'Never'
     j2_discLUT.AnnotationsInitialized = 1
     j2_discLUT.TransferFunction2D = j2_discTF2D
     j2_discLUT.RGBPoints = [-0.5, 0.054902, 0.109804, 0.121569,
@@ -677,7 +677,7 @@ def makefig_5bins():
 
     # get color transfer function/color map for 'j2_disc'
     j2_discLUT = GetColorTransferFunction('j2_disc')
-    j2_discLUT.AutomaticRescaleRangeMode = 'Grow and update every timestep'
+    j2_discLUT.AutomaticRescaleRangeMode = 'Never'
     j2_discLUT.AnnotationsInitialized = 1
     j2_discLUT.TransferFunction2D = j2_discTF2D
     j2_discLUT.RGBPoints = [-0.5, 0.054902, 0.109804, 0.121569,
@@ -939,7 +939,7 @@ def makefig_6bins():
 
     # get color transfer function/color map for 'j2_disc'
     j2_discLUT = GetColorTransferFunction('j2_disc')
-    j2_discLUT.AutomaticRescaleRangeMode = 'Grow and update every timestep'
+    j2_discLUT.AutomaticRescaleRangeMode = 'Never'
     j2_discLUT.AnnotationsInitialized = 1
     j2_discLUT.TransferFunction2D = j2_discTF2D
     j2_discLUT.RGBPoints = [-0.5, 0.054902, 0.109804, 0.121569,
@@ -1067,7 +1067,7 @@ def make_joint_figure():
     letters = ['a)', 'b)', 'c)', 'd)']
     fig, axs = plt.subplots(2, 4,
                             figsize=(12, 7),
-                            gridspec_kw={'wspace': -0.07,
+                            gridspec_kw={'wspace': -0.01,
                                          'hspace': -0.1},
                             constrained_layout=False)
 

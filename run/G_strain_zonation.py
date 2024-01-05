@@ -3,7 +3,7 @@ import time
 from os.path import join
 from nonpoisson import paths
 from nonpoisson.zonation import GeodeticModel
-
+import seaborn as sns
 
 def create_strain_model():
     print('Processing model: ', paths.model_names)
@@ -28,9 +28,12 @@ def create_strain_model():
 
 
 def make_zonation():
+    sns.set_style("darkgrid", {"axes.facecolor": ".9",
+                               'font.family': 'Ubuntu'})
 
     # Metrics to be used in the zonation
     metrics = ['j2', 'tau_max', 'ss']
+
     # Number of strain-map discretizations/bins
     bin_numbers = [3, 4, 5, 6]
 
@@ -76,9 +79,9 @@ def make_zonation():
     model.include_region(paths.region_tvz_corr, metrics)
     model.bins_polygonize(metrics, bin_numbers)
     print('\tTime of processing: %.1f' % (time.process_time() - start))
-
+    sns.reset_defaults()
 
 if __name__ == '__main__':
 
-    create_strain_model()
+    # create_strain_model()
     make_zonation()

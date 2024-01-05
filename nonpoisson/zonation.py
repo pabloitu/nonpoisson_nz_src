@@ -599,7 +599,7 @@ class GeodeticModel(object):
                        var=None, save_path='histogram.png',
                        legend=True, legend_size=12, dpi=300):
 
-        fig = plt.figure(figsize=(6, 5))
+        fig = plt.figure(figsize=(6, 5), constrained_layout=True)
         hist = plt.hist(A, bins=75, color='steelblue', density=True, alpha=0.6)
         plt.title(title)
         if range_ is None:
@@ -634,9 +634,8 @@ class GeodeticModel(object):
         fig.get_axes()[0].set_ylabel(ylabel, fontsize=28)
         plt.xticks(fontsize=16)
         plt.yticks(fontsize=16)
-        plt.xlim(xlims)
         plt.ylim([0.01, None])
-        plt.tight_layout()
+        plt.xlim(xlims)
         plt.savefig(save_path, dpi=dpi)
         plt.show()
         return hist
